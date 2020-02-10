@@ -5,7 +5,6 @@ CPU6502::CPU6502(std::shared_ptr<Memory> mem)
         : mem{std::move(mem)},
           A{0}, X{0}, Y{0}, P{0}, S{0},
           PC{0x10} {
-    
     instr_table.fill(nullptr); // TODO: Fill invalids
 
     instr_table[0x69] = new CPU6502::Instr(this, 2, &CPU6502::Op_ADC, &CPU6502::Addr_IMM);
@@ -200,18 +199,18 @@ CPU6502::CPU6502(std::shared_ptr<Memory> mem)
  * Does NOT return the VALUE at that memory (hence IMM returns PC+1)
  */
 uint16_t CPU6502::Addr_ACC() { return 0; } // Not implemented
-uint16_t CPU6502::Addr_IMM() { return PC+1; }
-uint16_t CPU6502::Addr_ABS() { return mem->read_word(PC+1); }
-uint16_t CPU6502::Addr_ZER() { return mem->read_byte(PC+1); }
-uint16_t CPU6502::Addr_ZEX() { return mem->read_byte(PC+1) + (int8_t) X; } // TODO Fix looping around
-uint16_t CPU6502::Addr_ZEY() { return mem->read_byte(PC+1) + (int8_t) Y; } // TODO Fix looping around
-uint16_t CPU6502::Addr_ABX() { return mem->read_word(PC+1) + (int8_t) X; } // TODO Fix looping around
-uint16_t CPU6502::Addr_ABY() { return mem->read_word(PC+1) + (int8_t) Y; } // TODO Fix looping around
+uint16_t CPU6502::Addr_IMM() { return PC++; }
+uint16_t CPU6502::Addr_ABS() { int temp = PC; PC += 2; return mem->read_word(temp+1); }
+uint16_t CPU6502::Addr_ZER() { return mem->read_byte(PC++); }
+uint16_t CPU6502::Addr_ZEX() { return mem->read_byte(PC++) + (int8_t) X; } // TODO Fix looping around
+uint16_t CPU6502::Addr_ZEY() { return mem->read_byte(PC++) + (int8_t) Y; } // TODO Fix looping around
+uint16_t CPU6502::Addr_ABX() { int temp = PC; PC += 2; return mem->read_word(temp+1) + (int8_t) X; } // TODO Fix looping around
+uint16_t CPU6502::Addr_ABY() { int temp = PC; PC += 2; return mem->read_word(temp+1) + (int8_t) Y; } // TODO Fix looping around
 uint16_t CPU6502::Addr_IMP() { return 0; }
-uint16_t CPU6502::Addr_REL() { return PC + (int8_t) mem->read_byte(PC+1); }
-uint16_t CPU6502::Addr_INX() { return mem->read_word(mem->read_word(PC+1) + (int8_t) X); } // TODO Fix looping around
-uint16_t CPU6502::Addr_INY() { return mem->read_word(mem->read_word(PC+1)) + (int8_t) Y; } // TODO Fix looping around
-uint16_t CPU6502::Addr_ABI() { return mem->read_word(PC+1); } // TODO: Check this; should it just return the indirect?
+uint16_t CPU6502::Addr_REL() { int temp = PC; PC++; return temp + mem->read_byte(temp+1); }
+uint16_t CPU6502::Addr_INX() { int temp = PC; PC += 2; return mem->read_word(mem->read_word(temp+1) + (int8_t) X); } // TODO Fix looping around
+uint16_t CPU6502::Addr_INY() { int temp = PC; PC += 2; return mem->read_word(mem->read_word(temp+1)) + (int8_t) Y; } // TODO Fix looping around
+uint16_t CPU6502::Addr_ABI() { int temp = PC; PC += 2; return mem->read_word(temp+1); } // TODO: Check this; should it just return the indirect?
 
 void CPU6502::Op_ADC(uint16_t src) {
     // TODO: Fix various behaviors
