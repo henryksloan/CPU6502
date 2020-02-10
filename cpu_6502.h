@@ -129,7 +129,9 @@ class CPU6502 {
 
     std::array<Instr*, 0xff+1> instr_table;
 
-    inline void instr_exec(Instr instr);
+    inline void execute_instr(Instr instr) {
+        
+    }
 
     inline signed char get_flag(uint8_t mask) {
         return (P & mask) ? 1 : 0;
