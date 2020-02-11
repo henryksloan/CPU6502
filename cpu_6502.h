@@ -130,7 +130,9 @@ class CPU6502 {
     std::array<Instr*, 0xff+1> instr_table;
 
     inline void execute_instr(Instr instr) {
-        
+        // TODO: Do something with cycles
+        uint16_t src = instr.addr();
+        instr.run(src);
     }
 
     inline signed char get_flag(uint8_t mask) {
