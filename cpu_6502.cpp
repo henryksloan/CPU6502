@@ -577,6 +577,7 @@ void CPU6502::Op_TYA(uint16_t src) {
 }
 
 #include <iostream>
+#include "disassembler.h"
 int main(int argc, char **argv) {
     std::shared_ptr<Memory> mem = std::make_shared<Memory>(Memory());
     mem->write_byte(0x10+1, -0x4);
@@ -590,5 +591,20 @@ int main(int argc, char **argv) {
     std::cout <<  (unsigned) cpu.from_bcd(0x15) << std::endl;
     std::cout <<  (unsigned) cpu.from_bcd(0x49) << std::endl;
     std::cout <<  (unsigned) cpu.from_bcd(0x99) << std::endl;
+
+    Disassembler dis;
+    std::cout << dis.instr_to_string(dis.instr_table[0x29], 0x1010) << std::endl << std::endl;
+
+    std::ifstream file(argv[1], std::ifstream::binary);
+    if (!file) {
+        std::cerr << "Could not open file " << argv[1] << '\n';
+        std::cout << "Usage: " << argv[0] << " <binary file>\n";
+        return 1;
+    }
+    dis.file_to_strings(file);
+    for (auto s : dis.instructions) {
+        std::cout << s << std::endl;
+    }
+
     return 0;
 }
