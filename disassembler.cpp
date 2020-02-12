@@ -16,7 +16,8 @@ const std::map<std::string, Disassembler::AddrMode> Disassembler::addr_modes = {
     {"ABI", {2, "($w)"}}
 };
 
-Disassembler::Disassembler() {
+Disassembler::Disassembler(uint16_t base)
+    : base(base) {
     instr_table.fill(nullptr); // TODO: Fill invalids
     register_instr(0x69, "ADC", "IMM");
     register_instr(0x65, "ADC", "ZER");
@@ -172,10 +173,13 @@ Disassembler::Disassembler() {
 }
         #include <iostream>
 
-std::string Disassembler::instr_to_string(Disassembler::Instr *instr, uint16_t src) {
+std::string Disassembler::instr_to_string(Disassembler::Instr *instr, uint16_t PC, uint16_t src) {
     std::stringstream instr_ss;
 
     // TODO: Relative addresses and such
+    if (instr->mode == &addr_modes.at("REL")) {
+        src = PC + 2 + (int16_t) src;
+    }
     instr_ss << std::uppercase << instr->opcode << std::hex << std::setfill('0');
     size_t len = strlen(instr->mode->format);
     if (len != 0) instr_ss << " ";
@@ -204,6 +208,7 @@ void Disassembler::file_to_strings(std::ifstream &file) {
     uint16_t src;
 
     char temp;
+    uint16_t PC = base;
     while (file.read(&temp, 1)) {
         opcode = temp;
         // std::cout << std::hex << std::setw(2) << std::setfill('0') << (int) opcode << ' ';
@@ -214,6 +219,8 @@ void Disassembler::file_to_strings(std::ifstream &file) {
             src |= temp << 8*i;
         }
         // std::cout << std::hex << std::setw(4) << std::setfill('0') << (int) src << '\n';
-        instructions.push_back(instr_to_string(instr_table[opcode], src));
+        std::cout << std::hex << std::setfill('0') << std::setw(4) << (int) PC << " " << std::setw(2) << (int) opcode << " " << std::setw(4) << (int) src << " " << instr_to_string(instr_table[opcode], PC, src) << std::endl;
+        instructions.push_back(instr_to_string(instr_table[opcode], PC, src));
+        PC += instr_table[opcode]->mode->length + 1;
     }
 }
