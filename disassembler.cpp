@@ -34,6 +34,7 @@ Disassembler::Disassembler() {
     register_instr(0x39, "AND", "ABY");
     register_instr(0x21, "AND", "INX");
     register_instr(0x31, "AND", "INY");
+    register_instr(0x0A, "ASL", "ACC");
     register_instr(0x06, "ASL", "ZER");
     register_instr(0x16, "ASL", "ZEX");
     register_instr(0x0E, "ASL", "ABS");
@@ -85,7 +86,7 @@ Disassembler::Disassembler() {
     register_instr(0xF6, "INC", "ZEX");
     register_instr(0xEE, "INC", "ABS");
     register_instr(0xFE, "INC", "ABX");
-    register_instr(0xEA, "INX", "IMP");
+    register_instr(0xE8, "INX", "IMP");
     register_instr(0xC8, "INY", "IMP");
     register_instr(0x4C, "JMP", "ABS");
     register_instr(0x6C, "JMP", "ABI");
@@ -108,6 +109,7 @@ Disassembler::Disassembler() {
     register_instr(0xB4, "LDY", "ZEX");
     register_instr(0xAC, "LDY", "ABS");
     register_instr(0xBC, "LDY", "ABX");
+    register_instr(0x4A, "LSR", "ACC");
     register_instr(0x46, "LSR", "ZER");
     register_instr(0x56, "LSR", "ZEX");
     register_instr(0x4E, "LSR", "ABS");
@@ -125,14 +127,16 @@ Disassembler::Disassembler() {
     register_instr(0x08, "PHP", "IMP");
     register_instr(0x68, "PLA", "IMP");
     register_instr(0x28, "PLP", "IMP");
+    register_instr(0x2A, "ROL", "ACC");
     register_instr(0x26, "ROL", "ZER");
     register_instr(0x36, "ROL", "ZEX");
     register_instr(0x2E, "ROL", "ABS");
     register_instr(0x3E, "ROL", "ABX");
-    register_instr(0x26, "ROR", "ZER");
-    register_instr(0x36, "ROR", "ZEX");
-    register_instr(0x2E, "ROR", "ABS");
-    register_instr(0x3E, "ROR", "ABX");
+    register_instr(0x6A, "ROR", "ACC");
+    register_instr(0x66, "ROR", "ZER");
+    register_instr(0x76, "ROR", "ZEX");
+    register_instr(0x6E, "ROR", "ABS");
+    register_instr(0x7E, "ROR", "ABX");
     register_instr(0x40, "RTI", "IMP");
     register_instr(0x60, "RTS", "IMP");
     register_instr(0xE9, "SBC", "IMM");
@@ -166,10 +170,12 @@ Disassembler::Disassembler() {
     register_instr(0x9A, "TXS", "IMP");
     register_instr(0x98, "TYA", "IMP");
 }
+        #include <iostream>
 
 std::string Disassembler::instr_to_string(Disassembler::Instr *instr, uint16_t src) {
     std::stringstream instr_ss;
 
+    // TODO: Relative addresses and such
     instr_ss << std::uppercase << instr->opcode << std::hex << std::setfill('0');
     size_t len = strlen(instr->mode->format);
     if (len != 0) instr_ss << " ";
@@ -189,6 +195,7 @@ std::string Disassembler::instr_to_string(Disassembler::Instr *instr, uint16_t s
         }
     }
 
+    // std::cout << instr_ss.str() << '\n';
     return instr_ss.str();
 }
 
@@ -199,11 +206,14 @@ void Disassembler::file_to_strings(std::ifstream &file) {
     char temp;
     while (file.read(&temp, 1)) {
         opcode = temp;
+        // std::cout << std::hex << std::setw(2) << std::setfill('0') << (int) opcode << ' ';
         src = 0;
         for (int i = 0; i < instr_table[opcode]->mode->length; i++) {
             file.read(&temp, 1);
+            // std::cout << std::hex << std::setw(2) << std::setfill('0') << (int) temp << ' ';
             src |= temp << 8*i;
         }
+        // std::cout << std::hex << std::setw(4) << std::setfill('0') << (int) src << '\n';
         instructions.push_back(instr_to_string(instr_table[opcode], src));
     }
 }
