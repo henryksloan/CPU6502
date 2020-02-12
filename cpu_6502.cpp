@@ -4,7 +4,7 @@
 CPU6502::CPU6502(std::shared_ptr<Memory> mem)
         : mem{std::move(mem)},
           A{0}, X{0}, Y{0}, P{0}, S{0},
-          PC{0x10} {
+          PC{0x600} {
     instr_table.fill(nullptr); // TODO: Fill invalids
 
     instr_table[0x69] = new CPU6502::Instr(this, 2, &CPU6502::Op_ADC, &CPU6502::Addr_IMM);
@@ -592,8 +592,8 @@ int main(int argc, char **argv) {
     std::cout <<  (unsigned) cpu.from_bcd(0x49) << std::endl;
     std::cout <<  (unsigned) cpu.from_bcd(0x99) << std::endl;
 
-    Disassembler dis;
-    std::cout << dis.instr_to_string(dis.instr_table[0x29], 0x1010) << std::endl << std::endl;
+    Disassembler dis(0x600);
+    // std::cout << dis.instr_to_string(dis.instr_table[0x29], 0x1010) << std::endl << std::endl;
 
     std::ifstream file(argv[1], std::ifstream::binary);
     if (!file) {
@@ -601,10 +601,17 @@ int main(int argc, char **argv) {
         std::cout << "Usage: " << argv[0] << " <binary file>\n";
         return 1;
     }
+    file.seekg (0, file.end);
+    int length = file.tellg();
+    file.seekg (0, file.beg);
+    mem->load_file(file, 0, length, 0x600);
+    mem->print();
+    file.clear();
+    file.seekg(0, file.beg);
     dis.file_to_strings(file);
-    for (auto s : dis.instructions) {
+    /* for (auto s : dis.instructions) {
         std::cout << s << std::endl;
-    }
+    } */
 
     return 0;
 }

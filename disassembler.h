@@ -11,7 +11,7 @@
 
 class Disassembler {
  public:
-    Disassembler();
+    Disassembler(uint16_t base);
  // TODO: Uncomment
  // private:
      typedef struct AddrMode {
@@ -34,11 +34,11 @@ class Disassembler {
         instr_table[num] = new Disassembler::Instr(opcode, &addr_modes.at(mode));
     }
 
-    std::string instr_to_string(Instr *instr, uint16_t src);
+    std::string instr_to_string(Instr *instr, uint16_t PC, uint16_t src);
     void file_to_strings(std::ifstream &file);
 
+    uint16_t base;
     std::vector<std::string> instructions;
-
 };
 
 #endif // DISASSEMBLER_H
