@@ -21,6 +21,7 @@
 class CPU6502 {
  public:
     CPU6502(std::shared_ptr<Memory> mem);
+    ~CPU6502();
 
  // TODO: Uncomment
  // private:

@@ -171,7 +171,14 @@ Disassembler::Disassembler(uint16_t base)
     register_instr(0x9A, "TXS", "IMP");
     register_instr(0x98, "TYA", "IMP");
 }
-        #include <iostream>
+
+Disassembler::~Disassembler() {
+    for (auto op : instr_table) {
+        delete op;
+    }
+}
+
+#include <iostream>
 
 std::string Disassembler::instr_to_string(Disassembler::Instr *instr, uint16_t PC, uint16_t src) {
     std::stringstream instr_ss;
