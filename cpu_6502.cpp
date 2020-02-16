@@ -193,6 +193,12 @@ CPU6502::CPU6502(std::shared_ptr<Memory> mem)
     instr_table[0x98] = new CPU6502::Instr(this, 2, &CPU6502::Op_TYA, &CPU6502::Addr_IMP);
 }
 
+CPU6502::~CPU6502() {
+    for (auto op : instr_table) {
+        delete op;
+    }
+}
+
 /*
  * Addressing modes
  * Return the address an instruction will use to reference memory
@@ -576,11 +582,19 @@ void CPU6502::Op_TYA(uint16_t src) {
     set_flag(ZERO, A == 0);
 }
 
+int CPU6502::step() {
+    const Instr *instr = instr_table[mem->read_byte(PC)];
+    execute_instr(instr);
+
+    // TODO: Something with cycles
+    return instr->cycles;
+}
+
 #include <iostream>
 #include "disassembler.h"
 int main(int argc, char **argv) {
     std::shared_ptr<Memory> mem = std::make_shared<Memory>(Memory());
-    mem->write_byte(0x10+1, -0x4);
+    // mem->write_byte(0x10+1, -0x4);
     CPU6502 cpu(mem);
     std::cout << cpu.Addr_REL() << std::endl;
     std::cout << "0x" << std::hex << (unsigned) cpu.to_bcd(0) << std::dec << std::endl;

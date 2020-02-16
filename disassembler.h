@@ -12,6 +12,8 @@
 class Disassembler {
  public:
     Disassembler(uint16_t base);
+    ~Disassembler();
+
  // TODO: Uncomment
  // private:
      typedef struct AddrMode {
