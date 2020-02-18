@@ -1,6 +1,22 @@
 # CPU6502
 A MOS 6502 emulator with a simple API for easy integration into 6502 machine emulators
 
+## Compiling and running
+Requires cmake
+
+To compile:
+```
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+```
+
+To run:
+```
+./cpu6502 <binary file>
+```
+
 ## Resources and references
 - Instruction reference: https://www.masswerk.at/6502/6502_instruction_set.html
 - And: http://www.6502.org/tutorials/6502opcodes.html
