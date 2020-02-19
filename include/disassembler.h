@@ -30,7 +30,7 @@ class Disassembler {
         std::string opcode;
         const AddrMode *mode;
     } Instr;
-    std::array<Instr*, 0xff+1> instr_table;
+    std::array<Instr*, 0x100> instr_table;
 
     inline void register_instr(uint8_t num, std::string opcode, std::string mode) {
         instr_table[num] = new Disassembler::Instr(opcode, &addr_modes.at(mode));
