@@ -21,7 +21,6 @@
 class CPU6502 {
  public:
     CPU6502(std::shared_ptr<Memory> mem);
-    ~CPU6502();
 
  // TODO: Uncomment
  // private:
@@ -45,6 +44,7 @@ class CPU6502 {
      * addr_f is an addressing mode, that returns a memory address
      */
     typedef struct Instr {
+        Instr() {}
         Instr(CPU6502 *cpu,
               short cycles,
               void (CPU6502::*run_f)(uint16_t),
@@ -128,14 +128,14 @@ class CPU6502 {
     void Op_TXS(uint16_t);
     void Op_TYA(uint16_t);
 
-    std::array<Instr*, 0xff+1> instr_table;
+    std::array<Instr, 0xff+1> instr_table;
 
-    inline void execute_instr(const Instr *instr) {
+    inline void execute_instr(const Instr instr) {
         // TODO: Do something with cycles
         int temp = PC;
-        uint16_t src = instr->addr();
+        uint16_t src = instr.addr();
         std::cout << std::hex << (int) temp << ": " << " " << (int) src << '\n';
-        instr->run(src);
+        instr.run(src);
     }
 
     int step();

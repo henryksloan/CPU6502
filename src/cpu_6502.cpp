@@ -5,198 +5,192 @@ CPU6502::CPU6502(std::shared_ptr<Memory> mem)
         : mem{std::move(mem)},
           A{0}, X{0}, Y{0}, P{0}, S{0},
           PC{0x600} {
-    instr_table.fill(nullptr); // TODO: Fill invalids
+    // TODO: Fill invalids
 
-    instr_table[0x69] = new CPU6502::Instr(this, 2, &CPU6502::Op_ADC, &CPU6502::Addr_IMM);
-    instr_table[0x65] = new CPU6502::Instr(this, 3, &CPU6502::Op_ADC, &CPU6502::Addr_ZER);
-    instr_table[0x75] = new CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ZEX);
-    instr_table[0x6D] = new CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ABS);
-    instr_table[0x7D] = new CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ABX);
-    instr_table[0x79] = new CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ABY);
-    instr_table[0x61] = new CPU6502::Instr(this, 6, &CPU6502::Op_ADC, &CPU6502::Addr_INX);
-    instr_table[0x71] = new CPU6502::Instr(this, 5, &CPU6502::Op_ADC, &CPU6502::Addr_INY);
+    instr_table[0x69] = CPU6502::Instr(this, 2, &CPU6502::Op_ADC, &CPU6502::Addr_IMM);
+    instr_table[0x65] = CPU6502::Instr(this, 3, &CPU6502::Op_ADC, &CPU6502::Addr_ZER);
+    instr_table[0x75] = CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ZEX);
+    instr_table[0x6D] = CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ABS);
+    instr_table[0x7D] = CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ABX);
+    instr_table[0x79] = CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ABY);
+    instr_table[0x61] = CPU6502::Instr(this, 6, &CPU6502::Op_ADC, &CPU6502::Addr_INX);
+    instr_table[0x71] = CPU6502::Instr(this, 5, &CPU6502::Op_ADC, &CPU6502::Addr_INY);
 
-    instr_table[0x29] = new CPU6502::Instr(this, 2, &CPU6502::Op_AND, &CPU6502::Addr_IMM);
-    instr_table[0x25] = new CPU6502::Instr(this, 3, &CPU6502::Op_AND, &CPU6502::Addr_ZER);
-    instr_table[0x35] = new CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ZEX);
-    instr_table[0x2D] = new CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ABS);
-    instr_table[0x3D] = new CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ABX);
-    instr_table[0x39] = new CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ABY);
-    instr_table[0x21] = new CPU6502::Instr(this, 6, &CPU6502::Op_AND, &CPU6502::Addr_INX);
-    instr_table[0x31] = new CPU6502::Instr(this, 5, &CPU6502::Op_AND, &CPU6502::Addr_INY);
+    instr_table[0x29] = CPU6502::Instr(this, 2, &CPU6502::Op_AND, &CPU6502::Addr_IMM);
+    instr_table[0x25] = CPU6502::Instr(this, 3, &CPU6502::Op_AND, &CPU6502::Addr_ZER);
+    instr_table[0x35] = CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ZEX);
+    instr_table[0x2D] = CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ABS);
+    instr_table[0x3D] = CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ABX);
+    instr_table[0x39] = CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ABY);
+    instr_table[0x21] = CPU6502::Instr(this, 6, &CPU6502::Op_AND, &CPU6502::Addr_INX);
+    instr_table[0x31] = CPU6502::Instr(this, 5, &CPU6502::Op_AND, &CPU6502::Addr_INY);
 
-    instr_table[0x0A] = new CPU6502::Instr(this, 2, &CPU6502::Op_ASL_A, &CPU6502::Addr_ACC);
-    instr_table[0x06] = new CPU6502::Instr(this, 5, &CPU6502::Op_ASL, &CPU6502::Addr_ZER);
-    instr_table[0x16] = new CPU6502::Instr(this, 6, &CPU6502::Op_ASL, &CPU6502::Addr_ZEX);
-    instr_table[0x0E] = new CPU6502::Instr(this, 6, &CPU6502::Op_ASL, &CPU6502::Addr_ABS);
-    instr_table[0x1E] = new CPU6502::Instr(this, 7, &CPU6502::Op_ASL, &CPU6502::Addr_ABX);
+    instr_table[0x0A] = CPU6502::Instr(this, 2, &CPU6502::Op_ASL_A, &CPU6502::Addr_ACC);
+    instr_table[0x06] = CPU6502::Instr(this, 5, &CPU6502::Op_ASL, &CPU6502::Addr_ZER);
+    instr_table[0x16] = CPU6502::Instr(this, 6, &CPU6502::Op_ASL, &CPU6502::Addr_ZEX);
+    instr_table[0x0E] = CPU6502::Instr(this, 6, &CPU6502::Op_ASL, &CPU6502::Addr_ABS);
+    instr_table[0x1E] = CPU6502::Instr(this, 7, &CPU6502::Op_ASL, &CPU6502::Addr_ABX);
 
-    instr_table[0x90] = new CPU6502::Instr(this, 2, &CPU6502::Op_BCC, &CPU6502::Addr_REL);
-    instr_table[0xB0] = new CPU6502::Instr(this, 2, &CPU6502::Op_BCS, &CPU6502::Addr_REL);
-    instr_table[0xF0] = new CPU6502::Instr(this, 2, &CPU6502::Op_BEQ, &CPU6502::Addr_REL);
+    instr_table[0x90] = CPU6502::Instr(this, 2, &CPU6502::Op_BCC, &CPU6502::Addr_REL);
+    instr_table[0xB0] = CPU6502::Instr(this, 2, &CPU6502::Op_BCS, &CPU6502::Addr_REL);
+    instr_table[0xF0] = CPU6502::Instr(this, 2, &CPU6502::Op_BEQ, &CPU6502::Addr_REL);
 
-    instr_table[0x24] = new CPU6502::Instr(this, 3, &CPU6502::Op_BIT, &CPU6502::Addr_ZER);
-    instr_table[0x2C] = new CPU6502::Instr(this, 4, &CPU6502::Op_BIT, &CPU6502::Addr_ABS);
+    instr_table[0x24] = CPU6502::Instr(this, 3, &CPU6502::Op_BIT, &CPU6502::Addr_ZER);
+    instr_table[0x2C] = CPU6502::Instr(this, 4, &CPU6502::Op_BIT, &CPU6502::Addr_ABS);
 
-    instr_table[0x30] = new CPU6502::Instr(this, 2, &CPU6502::Op_BMI, &CPU6502::Addr_REL);
-    instr_table[0xD0] = new CPU6502::Instr(this, 2, &CPU6502::Op_BNE, &CPU6502::Addr_REL);
-    instr_table[0x10] = new CPU6502::Instr(this, 2, &CPU6502::Op_BPL, &CPU6502::Addr_REL);
+    instr_table[0x30] = CPU6502::Instr(this, 2, &CPU6502::Op_BMI, &CPU6502::Addr_REL);
+    instr_table[0xD0] = CPU6502::Instr(this, 2, &CPU6502::Op_BNE, &CPU6502::Addr_REL);
+    instr_table[0x10] = CPU6502::Instr(this, 2, &CPU6502::Op_BPL, &CPU6502::Addr_REL);
 
-    instr_table[0x00] = new CPU6502::Instr(this, 7, &CPU6502::Op_BRK, &CPU6502::Addr_IMP);
+    instr_table[0x00] = CPU6502::Instr(this, 7, &CPU6502::Op_BRK, &CPU6502::Addr_IMP);
 
-    instr_table[0x50] = new CPU6502::Instr(this, 2, &CPU6502::Op_BVC, &CPU6502::Addr_REL);
-    instr_table[0x70] = new CPU6502::Instr(this, 2, &CPU6502::Op_BVS, &CPU6502::Addr_REL);
+    instr_table[0x50] = CPU6502::Instr(this, 2, &CPU6502::Op_BVC, &CPU6502::Addr_REL);
+    instr_table[0x70] = CPU6502::Instr(this, 2, &CPU6502::Op_BVS, &CPU6502::Addr_REL);
 
-    instr_table[0x18] = new CPU6502::Instr(this, 2, &CPU6502::Op_CLC, &CPU6502::Addr_IMP);
-    instr_table[0xD8] = new CPU6502::Instr(this, 2, &CPU6502::Op_CLD, &CPU6502::Addr_IMP);
-    instr_table[0x58] = new CPU6502::Instr(this, 2, &CPU6502::Op_CLI, &CPU6502::Addr_IMP);
-    instr_table[0xB8] = new CPU6502::Instr(this, 2, &CPU6502::Op_CLV, &CPU6502::Addr_IMP);
+    instr_table[0x18] = CPU6502::Instr(this, 2, &CPU6502::Op_CLC, &CPU6502::Addr_IMP);
+    instr_table[0xD8] = CPU6502::Instr(this, 2, &CPU6502::Op_CLD, &CPU6502::Addr_IMP);
+    instr_table[0x58] = CPU6502::Instr(this, 2, &CPU6502::Op_CLI, &CPU6502::Addr_IMP);
+    instr_table[0xB8] = CPU6502::Instr(this, 2, &CPU6502::Op_CLV, &CPU6502::Addr_IMP);
 
-    instr_table[0xC9] = new CPU6502::Instr(this, 2, &CPU6502::Op_CMP, &CPU6502::Addr_IMM);
-    instr_table[0xC5] = new CPU6502::Instr(this, 3, &CPU6502::Op_CMP, &CPU6502::Addr_ZER);
-    instr_table[0xD5] = new CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ZEX);
-    instr_table[0xCD] = new CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ABS);
-    instr_table[0xDD] = new CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ABX);
-    instr_table[0xD9] = new CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ABY);
-    instr_table[0xC1] = new CPU6502::Instr(this, 6, &CPU6502::Op_CMP, &CPU6502::Addr_INX);
-    instr_table[0xD1] = new CPU6502::Instr(this, 5, &CPU6502::Op_CMP, &CPU6502::Addr_INY);
+    instr_table[0xC9] = CPU6502::Instr(this, 2, &CPU6502::Op_CMP, &CPU6502::Addr_IMM);
+    instr_table[0xC5] = CPU6502::Instr(this, 3, &CPU6502::Op_CMP, &CPU6502::Addr_ZER);
+    instr_table[0xD5] = CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ZEX);
+    instr_table[0xCD] = CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ABS);
+    instr_table[0xDD] = CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ABX);
+    instr_table[0xD9] = CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ABY);
+    instr_table[0xC1] = CPU6502::Instr(this, 6, &CPU6502::Op_CMP, &CPU6502::Addr_INX);
+    instr_table[0xD1] = CPU6502::Instr(this, 5, &CPU6502::Op_CMP, &CPU6502::Addr_INY);
 
-    instr_table[0xE0] = new CPU6502::Instr(this, 2, &CPU6502::Op_CPX, &CPU6502::Addr_IMM);
-    instr_table[0xE4] = new CPU6502::Instr(this, 3, &CPU6502::Op_CPX, &CPU6502::Addr_ZER);
-    instr_table[0xEC] = new CPU6502::Instr(this, 4, &CPU6502::Op_CPX, &CPU6502::Addr_ABS);
+    instr_table[0xE0] = CPU6502::Instr(this, 2, &CPU6502::Op_CPX, &CPU6502::Addr_IMM);
+    instr_table[0xE4] = CPU6502::Instr(this, 3, &CPU6502::Op_CPX, &CPU6502::Addr_ZER);
+    instr_table[0xEC] = CPU6502::Instr(this, 4, &CPU6502::Op_CPX, &CPU6502::Addr_ABS);
 
-    instr_table[0xC0] = new CPU6502::Instr(this, 2, &CPU6502::Op_CPY, &CPU6502::Addr_IMM);
-    instr_table[0xC4] = new CPU6502::Instr(this, 3, &CPU6502::Op_CPY, &CPU6502::Addr_ZER);
-    instr_table[0xCC] = new CPU6502::Instr(this, 4, &CPU6502::Op_CPY, &CPU6502::Addr_ABS);
+    instr_table[0xC0] = CPU6502::Instr(this, 2, &CPU6502::Op_CPY, &CPU6502::Addr_IMM);
+    instr_table[0xC4] = CPU6502::Instr(this, 3, &CPU6502::Op_CPY, &CPU6502::Addr_ZER);
+    instr_table[0xCC] = CPU6502::Instr(this, 4, &CPU6502::Op_CPY, &CPU6502::Addr_ABS);
 
-    instr_table[0xC6] = new CPU6502::Instr(this, 5, &CPU6502::Op_DEC, &CPU6502::Addr_ZER);
-    instr_table[0xD6] = new CPU6502::Instr(this, 6, &CPU6502::Op_DEC, &CPU6502::Addr_ZEX);
-    instr_table[0xCE] = new CPU6502::Instr(this, 6, &CPU6502::Op_DEC, &CPU6502::Addr_ABS);
-    instr_table[0xDE] = new CPU6502::Instr(this, 7, &CPU6502::Op_DEC, &CPU6502::Addr_ABX);
+    instr_table[0xC6] = CPU6502::Instr(this, 5, &CPU6502::Op_DEC, &CPU6502::Addr_ZER);
+    instr_table[0xD6] = CPU6502::Instr(this, 6, &CPU6502::Op_DEC, &CPU6502::Addr_ZEX);
+    instr_table[0xCE] = CPU6502::Instr(this, 6, &CPU6502::Op_DEC, &CPU6502::Addr_ABS);
+    instr_table[0xDE] = CPU6502::Instr(this, 7, &CPU6502::Op_DEC, &CPU6502::Addr_ABX);
 
-    instr_table[0xCA] = new CPU6502::Instr(this, 2, &CPU6502::Op_DEX, &CPU6502::Addr_IMP);
-    instr_table[0x88] = new CPU6502::Instr(this, 2, &CPU6502::Op_DEY, &CPU6502::Addr_IMP);
+    instr_table[0xCA] = CPU6502::Instr(this, 2, &CPU6502::Op_DEX, &CPU6502::Addr_IMP);
+    instr_table[0x88] = CPU6502::Instr(this, 2, &CPU6502::Op_DEY, &CPU6502::Addr_IMP);
 
-    instr_table[0x49] = new CPU6502::Instr(this, 2, &CPU6502::Op_EOR, &CPU6502::Addr_IMM);
-    instr_table[0x45] = new CPU6502::Instr(this, 3, &CPU6502::Op_EOR, &CPU6502::Addr_ZER);
-    instr_table[0x55] = new CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ZEX);
-    instr_table[0x4D] = new CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ABS);
-    instr_table[0x5D] = new CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ABX);
-    instr_table[0x59] = new CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ABY);
-    instr_table[0x41] = new CPU6502::Instr(this, 6, &CPU6502::Op_EOR, &CPU6502::Addr_INX);
-    instr_table[0x51] = new CPU6502::Instr(this, 5, &CPU6502::Op_EOR, &CPU6502::Addr_INY);
+    instr_table[0x49] = CPU6502::Instr(this, 2, &CPU6502::Op_EOR, &CPU6502::Addr_IMM);
+    instr_table[0x45] = CPU6502::Instr(this, 3, &CPU6502::Op_EOR, &CPU6502::Addr_ZER);
+    instr_table[0x55] = CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ZEX);
+    instr_table[0x4D] = CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ABS);
+    instr_table[0x5D] = CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ABX);
+    instr_table[0x59] = CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ABY);
+    instr_table[0x41] = CPU6502::Instr(this, 6, &CPU6502::Op_EOR, &CPU6502::Addr_INX);
+    instr_table[0x51] = CPU6502::Instr(this, 5, &CPU6502::Op_EOR, &CPU6502::Addr_INY);
 
-    instr_table[0xE6] = new CPU6502::Instr(this, 5, &CPU6502::Op_INC, &CPU6502::Addr_ZER);
-    instr_table[0xF6] = new CPU6502::Instr(this, 6, &CPU6502::Op_INC, &CPU6502::Addr_ZEX);
-    instr_table[0xEE] = new CPU6502::Instr(this, 6, &CPU6502::Op_INC, &CPU6502::Addr_ABS);
-    instr_table[0xFE] = new CPU6502::Instr(this, 7, &CPU6502::Op_INC, &CPU6502::Addr_ABX);
+    instr_table[0xE6] = CPU6502::Instr(this, 5, &CPU6502::Op_INC, &CPU6502::Addr_ZER);
+    instr_table[0xF6] = CPU6502::Instr(this, 6, &CPU6502::Op_INC, &CPU6502::Addr_ZEX);
+    instr_table[0xEE] = CPU6502::Instr(this, 6, &CPU6502::Op_INC, &CPU6502::Addr_ABS);
+    instr_table[0xFE] = CPU6502::Instr(this, 7, &CPU6502::Op_INC, &CPU6502::Addr_ABX);
 
-    instr_table[0xE8] = new CPU6502::Instr(this, 2, &CPU6502::Op_INX, &CPU6502::Addr_IMP);
-    instr_table[0xC8] = new CPU6502::Instr(this, 2, &CPU6502::Op_INY, &CPU6502::Addr_IMP);
+    instr_table[0xE8] = CPU6502::Instr(this, 2, &CPU6502::Op_INX, &CPU6502::Addr_IMP);
+    instr_table[0xC8] = CPU6502::Instr(this, 2, &CPU6502::Op_INY, &CPU6502::Addr_IMP);
 
-    instr_table[0x4C] = new CPU6502::Instr(this, 3, &CPU6502::Op_JMP, &CPU6502::Addr_ABS);
-    instr_table[0x6C] = new CPU6502::Instr(this, 5, &CPU6502::Op_JMP, &CPU6502::Addr_ABI);
-    instr_table[0x20] = new CPU6502::Instr(this, 6, &CPU6502::Op_JSR, &CPU6502::Addr_ABS);
+    instr_table[0x4C] = CPU6502::Instr(this, 3, &CPU6502::Op_JMP, &CPU6502::Addr_ABS);
+    instr_table[0x6C] = CPU6502::Instr(this, 5, &CPU6502::Op_JMP, &CPU6502::Addr_ABI);
+    instr_table[0x20] = CPU6502::Instr(this, 6, &CPU6502::Op_JSR, &CPU6502::Addr_ABS);
 
-    instr_table[0xA9] = new CPU6502::Instr(this, 2, &CPU6502::Op_LDA, &CPU6502::Addr_IMM);
-    instr_table[0xA5] = new CPU6502::Instr(this, 3, &CPU6502::Op_LDA, &CPU6502::Addr_ZER);
-    instr_table[0xB5] = new CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ZEX);
-    instr_table[0xAD] = new CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ABS);
-    instr_table[0xBD] = new CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ABX);
-    instr_table[0xB9] = new CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ABY);
-    instr_table[0xA1] = new CPU6502::Instr(this, 6, &CPU6502::Op_LDA, &CPU6502::Addr_INX);
-    instr_table[0xB1] = new CPU6502::Instr(this, 5, &CPU6502::Op_LDA, &CPU6502::Addr_INY);
+    instr_table[0xA9] = CPU6502::Instr(this, 2, &CPU6502::Op_LDA, &CPU6502::Addr_IMM);
+    instr_table[0xA5] = CPU6502::Instr(this, 3, &CPU6502::Op_LDA, &CPU6502::Addr_ZER);
+    instr_table[0xB5] = CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ZEX);
+    instr_table[0xAD] = CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ABS);
+    instr_table[0xBD] = CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ABX);
+    instr_table[0xB9] = CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ABY);
+    instr_table[0xA1] = CPU6502::Instr(this, 6, &CPU6502::Op_LDA, &CPU6502::Addr_INX);
+    instr_table[0xB1] = CPU6502::Instr(this, 5, &CPU6502::Op_LDA, &CPU6502::Addr_INY);
 
-    instr_table[0xA2] = new CPU6502::Instr(this, 2, &CPU6502::Op_LDX, &CPU6502::Addr_IMM);
-    instr_table[0xA6] = new CPU6502::Instr(this, 3, &CPU6502::Op_LDX, &CPU6502::Addr_ZER);
-    instr_table[0xB6] = new CPU6502::Instr(this, 4, &CPU6502::Op_LDX, &CPU6502::Addr_ZEX);
-    instr_table[0xAE] = new CPU6502::Instr(this, 4, &CPU6502::Op_LDX, &CPU6502::Addr_ABS);
-    instr_table[0xBE] = new CPU6502::Instr(this, 4, &CPU6502::Op_LDX, &CPU6502::Addr_ABX);
+    instr_table[0xA2] = CPU6502::Instr(this, 2, &CPU6502::Op_LDX, &CPU6502::Addr_IMM);
+    instr_table[0xA6] = CPU6502::Instr(this, 3, &CPU6502::Op_LDX, &CPU6502::Addr_ZER);
+    instr_table[0xB6] = CPU6502::Instr(this, 4, &CPU6502::Op_LDX, &CPU6502::Addr_ZEX);
+    instr_table[0xAE] = CPU6502::Instr(this, 4, &CPU6502::Op_LDX, &CPU6502::Addr_ABS);
+    instr_table[0xBE] = CPU6502::Instr(this, 4, &CPU6502::Op_LDX, &CPU6502::Addr_ABX);
 
-    instr_table[0xA0] = new CPU6502::Instr(this, 2, &CPU6502::Op_LDY, &CPU6502::Addr_IMM);
-    instr_table[0xA4] = new CPU6502::Instr(this, 3, &CPU6502::Op_LDY, &CPU6502::Addr_ZER);
-    instr_table[0xB4] = new CPU6502::Instr(this, 4, &CPU6502::Op_LDY, &CPU6502::Addr_ZEX);
-    instr_table[0xAC] = new CPU6502::Instr(this, 4, &CPU6502::Op_LDY, &CPU6502::Addr_ABS);
-    instr_table[0xBC] = new CPU6502::Instr(this, 4, &CPU6502::Op_LDY, &CPU6502::Addr_ABX);
+    instr_table[0xA0] = CPU6502::Instr(this, 2, &CPU6502::Op_LDY, &CPU6502::Addr_IMM);
+    instr_table[0xA4] = CPU6502::Instr(this, 3, &CPU6502::Op_LDY, &CPU6502::Addr_ZER);
+    instr_table[0xB4] = CPU6502::Instr(this, 4, &CPU6502::Op_LDY, &CPU6502::Addr_ZEX);
+    instr_table[0xAC] = CPU6502::Instr(this, 4, &CPU6502::Op_LDY, &CPU6502::Addr_ABS);
+    instr_table[0xBC] = CPU6502::Instr(this, 4, &CPU6502::Op_LDY, &CPU6502::Addr_ABX);
 
-    instr_table[0x4A] = new CPU6502::Instr(this, 2, &CPU6502::Op_LSR_A, &CPU6502::Addr_ACC);
-    instr_table[0x46] = new CPU6502::Instr(this, 5, &CPU6502::Op_LSR, &CPU6502::Addr_ZER);
-    instr_table[0x56] = new CPU6502::Instr(this, 6, &CPU6502::Op_LSR, &CPU6502::Addr_ZEX);
-    instr_table[0x4E] = new CPU6502::Instr(this, 6, &CPU6502::Op_LSR, &CPU6502::Addr_ABS);
-    instr_table[0x5E] = new CPU6502::Instr(this, 7, &CPU6502::Op_LSR, &CPU6502::Addr_ABX);
+    instr_table[0x4A] = CPU6502::Instr(this, 2, &CPU6502::Op_LSR_A, &CPU6502::Addr_ACC);
+    instr_table[0x46] = CPU6502::Instr(this, 5, &CPU6502::Op_LSR, &CPU6502::Addr_ZER);
+    instr_table[0x56] = CPU6502::Instr(this, 6, &CPU6502::Op_LSR, &CPU6502::Addr_ZEX);
+    instr_table[0x4E] = CPU6502::Instr(this, 6, &CPU6502::Op_LSR, &CPU6502::Addr_ABS);
+    instr_table[0x5E] = CPU6502::Instr(this, 7, &CPU6502::Op_LSR, &CPU6502::Addr_ABX);
 
-    instr_table[0xEA] = new CPU6502::Instr(this, 2, &CPU6502::Op_NOP, &CPU6502::Addr_IMP);
+    instr_table[0xEA] = CPU6502::Instr(this, 2, &CPU6502::Op_NOP, &CPU6502::Addr_IMP);
 
-    instr_table[0x09] = new CPU6502::Instr(this, 2, &CPU6502::Op_ORA, &CPU6502::Addr_IMM);
-    instr_table[0x05] = new CPU6502::Instr(this, 3, &CPU6502::Op_ORA, &CPU6502::Addr_ZER);
-    instr_table[0x15] = new CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ZEX);
-    instr_table[0x0D] = new CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ABS);
-    instr_table[0x1D] = new CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ABX);
-    instr_table[0x19] = new CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ABY);
-    instr_table[0x01] = new CPU6502::Instr(this, 6, &CPU6502::Op_ORA, &CPU6502::Addr_INX);
-    instr_table[0x11] = new CPU6502::Instr(this, 5, &CPU6502::Op_ORA, &CPU6502::Addr_INY);
+    instr_table[0x09] = CPU6502::Instr(this, 2, &CPU6502::Op_ORA, &CPU6502::Addr_IMM);
+    instr_table[0x05] = CPU6502::Instr(this, 3, &CPU6502::Op_ORA, &CPU6502::Addr_ZER);
+    instr_table[0x15] = CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ZEX);
+    instr_table[0x0D] = CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ABS);
+    instr_table[0x1D] = CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ABX);
+    instr_table[0x19] = CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ABY);
+    instr_table[0x01] = CPU6502::Instr(this, 6, &CPU6502::Op_ORA, &CPU6502::Addr_INX);
+    instr_table[0x11] = CPU6502::Instr(this, 5, &CPU6502::Op_ORA, &CPU6502::Addr_INY);
 
-    instr_table[0x48] = new CPU6502::Instr(this, 3, &CPU6502::Op_PHA, &CPU6502::Addr_IMP);
-    instr_table[0x08] = new CPU6502::Instr(this, 3, &CPU6502::Op_PHP, &CPU6502::Addr_IMP);
-    instr_table[0x68] = new CPU6502::Instr(this, 4, &CPU6502::Op_PLA, &CPU6502::Addr_IMP);
-    instr_table[0x28] = new CPU6502::Instr(this, 4, &CPU6502::Op_PLP, &CPU6502::Addr_IMP);
+    instr_table[0x48] = CPU6502::Instr(this, 3, &CPU6502::Op_PHA, &CPU6502::Addr_IMP);
+    instr_table[0x08] = CPU6502::Instr(this, 3, &CPU6502::Op_PHP, &CPU6502::Addr_IMP);
+    instr_table[0x68] = CPU6502::Instr(this, 4, &CPU6502::Op_PLA, &CPU6502::Addr_IMP);
+    instr_table[0x28] = CPU6502::Instr(this, 4, &CPU6502::Op_PLP, &CPU6502::Addr_IMP);
 
-    instr_table[0x2A] = new CPU6502::Instr(this, 2, &CPU6502::Op_ROL_A, &CPU6502::Addr_ACC);
-    instr_table[0x26] = new CPU6502::Instr(this, 5, &CPU6502::Op_ROL, &CPU6502::Addr_ZER);
-    instr_table[0x36] = new CPU6502::Instr(this, 6, &CPU6502::Op_ROL, &CPU6502::Addr_ZEX);
-    instr_table[0x2E] = new CPU6502::Instr(this, 6, &CPU6502::Op_ROL, &CPU6502::Addr_ABS);
-    instr_table[0x3E] = new CPU6502::Instr(this, 7, &CPU6502::Op_ROL, &CPU6502::Addr_ABX);
+    instr_table[0x2A] = CPU6502::Instr(this, 2, &CPU6502::Op_ROL_A, &CPU6502::Addr_ACC);
+    instr_table[0x26] = CPU6502::Instr(this, 5, &CPU6502::Op_ROL, &CPU6502::Addr_ZER);
+    instr_table[0x36] = CPU6502::Instr(this, 6, &CPU6502::Op_ROL, &CPU6502::Addr_ZEX);
+    instr_table[0x2E] = CPU6502::Instr(this, 6, &CPU6502::Op_ROL, &CPU6502::Addr_ABS);
+    instr_table[0x3E] = CPU6502::Instr(this, 7, &CPU6502::Op_ROL, &CPU6502::Addr_ABX);
 
-    instr_table[0x6A] = new CPU6502::Instr(this, 2, &CPU6502::Op_ROR_A, &CPU6502::Addr_ACC);
-    instr_table[0x66] = new CPU6502::Instr(this, 5, &CPU6502::Op_ROR, &CPU6502::Addr_ZER);
-    instr_table[0x76] = new CPU6502::Instr(this, 6, &CPU6502::Op_ROR, &CPU6502::Addr_ZEX);
-    instr_table[0x6E] = new CPU6502::Instr(this, 6, &CPU6502::Op_ROR, &CPU6502::Addr_ABS);
-    instr_table[0x7E] = new CPU6502::Instr(this, 7, &CPU6502::Op_ROR, &CPU6502::Addr_ABX);
+    instr_table[0x6A] = CPU6502::Instr(this, 2, &CPU6502::Op_ROR_A, &CPU6502::Addr_ACC);
+    instr_table[0x66] = CPU6502::Instr(this, 5, &CPU6502::Op_ROR, &CPU6502::Addr_ZER);
+    instr_table[0x76] = CPU6502::Instr(this, 6, &CPU6502::Op_ROR, &CPU6502::Addr_ZEX);
+    instr_table[0x6E] = CPU6502::Instr(this, 6, &CPU6502::Op_ROR, &CPU6502::Addr_ABS);
+    instr_table[0x7E] = CPU6502::Instr(this, 7, &CPU6502::Op_ROR, &CPU6502::Addr_ABX);
 
-    instr_table[0x40] = new CPU6502::Instr(this, 6, &CPU6502::Op_RTI, &CPU6502::Addr_IMP);
-    instr_table[0x60] = new CPU6502::Instr(this, 6, &CPU6502::Op_RTS, &CPU6502::Addr_IMP);
+    instr_table[0x40] = CPU6502::Instr(this, 6, &CPU6502::Op_RTI, &CPU6502::Addr_IMP);
+    instr_table[0x60] = CPU6502::Instr(this, 6, &CPU6502::Op_RTS, &CPU6502::Addr_IMP);
 
-    instr_table[0xE9] = new CPU6502::Instr(this, 2, &CPU6502::Op_SBC, &CPU6502::Addr_IMM);
-    instr_table[0xE5] = new CPU6502::Instr(this, 3, &CPU6502::Op_SBC, &CPU6502::Addr_ZER);
-    instr_table[0xF5] = new CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ZEX);
-    instr_table[0xED] = new CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ABS);
-    instr_table[0xFD] = new CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ABX);
-    instr_table[0xF9] = new CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ABY);
-    instr_table[0xE1] = new CPU6502::Instr(this, 6, &CPU6502::Op_SBC, &CPU6502::Addr_INX);
-    instr_table[0xF1] = new CPU6502::Instr(this, 5, &CPU6502::Op_SBC, &CPU6502::Addr_INY);
+    instr_table[0xE9] = CPU6502::Instr(this, 2, &CPU6502::Op_SBC, &CPU6502::Addr_IMM);
+    instr_table[0xE5] = CPU6502::Instr(this, 3, &CPU6502::Op_SBC, &CPU6502::Addr_ZER);
+    instr_table[0xF5] = CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ZEX);
+    instr_table[0xED] = CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ABS);
+    instr_table[0xFD] = CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ABX);
+    instr_table[0xF9] = CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ABY);
+    instr_table[0xE1] = CPU6502::Instr(this, 6, &CPU6502::Op_SBC, &CPU6502::Addr_INX);
+    instr_table[0xF1] = CPU6502::Instr(this, 5, &CPU6502::Op_SBC, &CPU6502::Addr_INY);
 
-    instr_table[0x38] = new CPU6502::Instr(this, 2, &CPU6502::Op_SEC, &CPU6502::Addr_IMP);
-    instr_table[0xF8] = new CPU6502::Instr(this, 2, &CPU6502::Op_SED, &CPU6502::Addr_IMP);
-    instr_table[0x78] = new CPU6502::Instr(this, 2, &CPU6502::Op_SEI, &CPU6502::Addr_IMP);
+    instr_table[0x38] = CPU6502::Instr(this, 2, &CPU6502::Op_SEC, &CPU6502::Addr_IMP);
+    instr_table[0xF8] = CPU6502::Instr(this, 2, &CPU6502::Op_SED, &CPU6502::Addr_IMP);
+    instr_table[0x78] = CPU6502::Instr(this, 2, &CPU6502::Op_SEI, &CPU6502::Addr_IMP);
 
-    instr_table[0x85] = new CPU6502::Instr(this, 3, &CPU6502::Op_STA, &CPU6502::Addr_ZER);
-    instr_table[0x95] = new CPU6502::Instr(this, 4, &CPU6502::Op_STA, &CPU6502::Addr_ZEX);
-    instr_table[0x8D] = new CPU6502::Instr(this, 4, &CPU6502::Op_STA, &CPU6502::Addr_ABS);
-    instr_table[0x9D] = new CPU6502::Instr(this, 5, &CPU6502::Op_STA, &CPU6502::Addr_ABS);
-    instr_table[0x99] = new CPU6502::Instr(this, 5, &CPU6502::Op_STA, &CPU6502::Addr_ABY);
-    instr_table[0x81] = new CPU6502::Instr(this, 6, &CPU6502::Op_STA, &CPU6502::Addr_INX);
-    instr_table[0x91] = new CPU6502::Instr(this, 6, &CPU6502::Op_STA, &CPU6502::Addr_INY);
+    instr_table[0x85] = CPU6502::Instr(this, 3, &CPU6502::Op_STA, &CPU6502::Addr_ZER);
+    instr_table[0x95] = CPU6502::Instr(this, 4, &CPU6502::Op_STA, &CPU6502::Addr_ZEX);
+    instr_table[0x8D] = CPU6502::Instr(this, 4, &CPU6502::Op_STA, &CPU6502::Addr_ABS);
+    instr_table[0x9D] = CPU6502::Instr(this, 5, &CPU6502::Op_STA, &CPU6502::Addr_ABS);
+    instr_table[0x99] = CPU6502::Instr(this, 5, &CPU6502::Op_STA, &CPU6502::Addr_ABY);
+    instr_table[0x81] = CPU6502::Instr(this, 6, &CPU6502::Op_STA, &CPU6502::Addr_INX);
+    instr_table[0x91] = CPU6502::Instr(this, 6, &CPU6502::Op_STA, &CPU6502::Addr_INY);
 
-    instr_table[0x86] = new CPU6502::Instr(this, 3, &CPU6502::Op_STX, &CPU6502::Addr_ZER);
-    instr_table[0x96] = new CPU6502::Instr(this, 4, &CPU6502::Op_STX, &CPU6502::Addr_ZEY);
-    instr_table[0x8E] = new CPU6502::Instr(this, 4, &CPU6502::Op_STX, &CPU6502::Addr_ABS);
+    instr_table[0x86] = CPU6502::Instr(this, 3, &CPU6502::Op_STX, &CPU6502::Addr_ZER);
+    instr_table[0x96] = CPU6502::Instr(this, 4, &CPU6502::Op_STX, &CPU6502::Addr_ZEY);
+    instr_table[0x8E] = CPU6502::Instr(this, 4, &CPU6502::Op_STX, &CPU6502::Addr_ABS);
 
-    instr_table[0x84] = new CPU6502::Instr(this, 3, &CPU6502::Op_STY, &CPU6502::Addr_ZER);
-    instr_table[0x94] = new CPU6502::Instr(this, 4, &CPU6502::Op_STY, &CPU6502::Addr_ZEX);
-    instr_table[0x8C] = new CPU6502::Instr(this, 4, &CPU6502::Op_STY, &CPU6502::Addr_ABS);
+    instr_table[0x84] = CPU6502::Instr(this, 3, &CPU6502::Op_STY, &CPU6502::Addr_ZER);
+    instr_table[0x94] = CPU6502::Instr(this, 4, &CPU6502::Op_STY, &CPU6502::Addr_ZEX);
+    instr_table[0x8C] = CPU6502::Instr(this, 4, &CPU6502::Op_STY, &CPU6502::Addr_ABS);
 
-    instr_table[0xAA] = new CPU6502::Instr(this, 2, &CPU6502::Op_TAX, &CPU6502::Addr_IMP);
-    instr_table[0xA8] = new CPU6502::Instr(this, 2, &CPU6502::Op_TAY, &CPU6502::Addr_IMP);
-    instr_table[0xBA] = new CPU6502::Instr(this, 2, &CPU6502::Op_TSX, &CPU6502::Addr_IMP);
-    instr_table[0x8A] = new CPU6502::Instr(this, 2, &CPU6502::Op_TXA, &CPU6502::Addr_IMP);
-    instr_table[0x9A] = new CPU6502::Instr(this, 2, &CPU6502::Op_TXS, &CPU6502::Addr_IMP);
-    instr_table[0x98] = new CPU6502::Instr(this, 2, &CPU6502::Op_TYA, &CPU6502::Addr_IMP);
-}
-
-CPU6502::~CPU6502() {
-    for (auto op : instr_table) {
-        delete op;
-    }
+    instr_table[0xAA] = CPU6502::Instr(this, 2, &CPU6502::Op_TAX, &CPU6502::Addr_IMP);
+    instr_table[0xA8] = CPU6502::Instr(this, 2, &CPU6502::Op_TAY, &CPU6502::Addr_IMP);
+    instr_table[0xBA] = CPU6502::Instr(this, 2, &CPU6502::Op_TSX, &CPU6502::Addr_IMP);
+    instr_table[0x8A] = CPU6502::Instr(this, 2, &CPU6502::Op_TXA, &CPU6502::Addr_IMP);
+    instr_table[0x9A] = CPU6502::Instr(this, 2, &CPU6502::Op_TXS, &CPU6502::Addr_IMP);
+    instr_table[0x98] = CPU6502::Instr(this, 2, &CPU6502::Op_TYA, &CPU6502::Addr_IMP);
 }
 
 /*
@@ -588,12 +582,12 @@ int CPU6502::step() {
     // std::cout << std::hex << (int) PC << " " << (int) opcode << '\n';
     std::cout << std::hex << (int) opcode << " ";
     // if (opcode == 0x00) return 0; // TEMP
-    const Instr *instr = instr_table[opcode];
+    const Instr instr = instr_table[opcode];
     execute_instr(instr);
     PC++;
 
     // TODO: Something with cycles
-    return instr->cycles;
+    return instr.cycles;
 }
 
 #include "disassembler.h"
