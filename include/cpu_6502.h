@@ -128,7 +128,7 @@ class CPU6502 {
     void Op_TXS(uint16_t);
     void Op_TYA(uint16_t);
 
-    std::array<Instr*, 0xff+1> instr_table;
+    std::array<Instr*, 0x100> instr_table;
 
     inline void execute_instr(const Instr *instr) {
         // TODO: Do something with cycles
