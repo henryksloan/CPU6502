@@ -582,15 +582,20 @@ void CPU6502::Op_TYA(uint16_t src) {
     set_flag(ZERO, A == 0);
 }
 
+#include <iostream> // TODO: Remove
 int CPU6502::step() {
-    const Instr *instr = instr_table[mem->read_byte(PC)];
+    uint8_t opcode = mem->read_byte(PC);
+    // std::cout << std::hex << (int) PC << " " << (int) opcode << '\n';
+    std::cout << std::hex << (int) opcode << " ";
+    // if (opcode == 0x00) return 0; // TEMP
+    const Instr *instr = instr_table[opcode];
     execute_instr(instr);
+    PC++;
 
     // TODO: Something with cycles
     return instr->cycles;
 }
 
-#include <iostream>
 #include "disassembler.h"
 int main(int argc, char **argv) {
     std::shared_ptr<Memory> mem = std::make_shared<Memory>(Memory());
@@ -623,6 +628,7 @@ int main(int argc, char **argv) {
     file.clear();
     file.seekg(0, file.beg);
     dis.file_to_strings(file);
+    for (int i = 0; i < 100; i++) cpu.step();
     /* for (auto s : dis.instructions) {
         std::cout << s << std::endl;
     } */

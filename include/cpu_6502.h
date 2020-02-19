@@ -130,11 +130,15 @@ class CPU6502 {
 
     std::array<Instr*, 0xff+1> instr_table;
 
-    inline void execute_instr(Instr instr) {
+    inline void execute_instr(const Instr *instr) {
         // TODO: Do something with cycles
-        uint16_t src = instr.addr();
-        instr.run(src);
+        int temp = PC;
+        uint16_t src = instr->addr();
+        std::cout << std::hex << (int) temp << ": " << " " << (int) src << '\n';
+        instr->run(src);
     }
+
+    int step();
 
     inline signed char get_flag(uint8_t mask) {
         return (P & mask) ? 1 : 0;
