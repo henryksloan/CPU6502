@@ -18,7 +18,7 @@ const std::map<std::string, Disassembler::AddrMode> Disassembler::addr_modes = {
 
 Disassembler::Disassembler(uint16_t base)
     : base(base) {
-    instr_table.fill(nullptr); // TODO: Fill invalids
+    // TODO: Fill invalids
     register_instr(0x69, "ADC", "IMM");
     register_instr(0x65, "ADC", "ZER");
     register_instr(0x75, "ADC", "ZEX");
@@ -172,26 +172,20 @@ Disassembler::Disassembler(uint16_t base)
     register_instr(0x98, "TYA", "IMP");
 }
 
-Disassembler::~Disassembler() {
-    for (auto op : instr_table) {
-        delete op;
-    }
-}
-
 #include <iostream>
 
-std::string Disassembler::instr_to_string(Disassembler::Instr *instr, uint16_t PC, uint16_t src) {
+std::string Disassembler::instr_to_string(Disassembler::Instr instr, uint16_t PC, uint16_t src) {
     std::stringstream instr_ss;
 
     // TODO: Relative addresses and such
-    if (instr->mode == &addr_modes.at("REL")) {
+    if (instr.mode == &addr_modes.at("REL")) {
         src = PC + 2 + (int16_t) src;
     }
-    instr_ss << std::uppercase << instr->opcode << std::hex << std::setfill('0');
-    size_t len = strlen(instr->mode->format);
+    instr_ss << std::uppercase << instr.opcode << std::hex << std::setfill('0');
+    size_t len = strlen(instr.mode->format);
     if (len != 0) instr_ss << " ";
     for (int i = 0; i < len; i++) {
-        switch (instr->mode->format[i]) {
+        switch (instr.mode->format[i]) {
             case 'b':
                 instr_ss << std::setw(2) << src;
                 break;
@@ -201,12 +195,11 @@ std::string Disassembler::instr_to_string(Disassembler::Instr *instr, uint16_t P
                 break;
 
             default:
-                instr_ss << instr->mode->format[i];
+                instr_ss << instr.mode->format[i];
                 break;
         }
     }
 
-    // std::cout << instr_ss.str() << '\n';
     return instr_ss.str();
 }
 
@@ -220,7 +213,7 @@ void Disassembler::file_to_strings(std::ifstream &file) {
         opcode = temp;
         // std::cout << std::hex << std::setw(2) << std::setfill('0') << (int) opcode << ' ';
         src = 0;
-        for (int i = 0; i < instr_table[opcode]->mode->length; i++) {
+        for (int i = 0; i < instr_table[opcode].mode->length; i++) {
             file.read(&temp, 1);
             // std::cout << std::hex << std::setw(2) << std::setfill('0') << (int) temp << ' ';
             src |= temp << 8*i;
@@ -228,6 +221,6 @@ void Disassembler::file_to_strings(std::ifstream &file) {
         // std::cout << std::hex << std::setw(4) << std::setfill('0') << (int) src << '\n';
         std::cout << std::hex << std::setfill('0') << std::setw(4) << (int) PC << " " << std::setw(2) << (int) opcode << " " << std::setw(4) << (int) src << " " << instr_to_string(instr_table[opcode], PC, src) << std::endl;
         instructions.push_back(instr_to_string(instr_table[opcode], PC, src));
-        PC += instr_table[opcode]->mode->length + 1;
+        PC += instr_table[opcode].mode->length + 1;
     }
 }

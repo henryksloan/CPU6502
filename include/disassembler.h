@@ -12,7 +12,6 @@
 class Disassembler {
  public:
     Disassembler(uint16_t base);
-    ~Disassembler();
 
  // TODO: Uncomment
  // private:
@@ -23,6 +22,7 @@ class Disassembler {
     static const std::map<std::string, AddrMode> addr_modes;
 
     typedef struct Instr {
+        Instr() {}
         Instr(std::string opcode,
               const AddrMode *mode)
             : opcode(opcode),
@@ -30,13 +30,13 @@ class Disassembler {
         std::string opcode;
         const AddrMode *mode;
     } Instr;
-    std::array<Instr*, 0x100> instr_table;
+    std::array<Instr, 0x100> instr_table;
 
     inline void register_instr(uint8_t num, std::string opcode, std::string mode) {
-        instr_table[num] = new Disassembler::Instr(opcode, &addr_modes.at(mode));
+        instr_table[num] = Instr(opcode, &addr_modes.at(mode));
     }
 
-    std::string instr_to_string(Instr *instr, uint16_t PC, uint16_t src);
+    std::string instr_to_string(Instr instr, uint16_t PC, uint16_t src);
     void file_to_strings(std::ifstream &file);
 
     uint16_t base;
