@@ -157,7 +157,7 @@ uint16_t CPU6502::Addr_INX() { int temp = PC; PC += 2; return mem->read_word(mem
 uint16_t CPU6502::Addr_INY() { int temp = PC; PC += 2; return mem->read_word(mem->read_word(temp+1)) + (int8_t) Y; } // TODO Fix looping around
 uint16_t CPU6502::Addr_ABI() { int temp = PC; PC += 2; return mem->read_word(temp+1); } // TODO: Check this; should it just return the indirect?
 
-void CPU6502::Op_ADC(uint16_t src) {
+void CPU6502::Op_ADC(uint16_t &src) {
     // TODO: Fix various behaviors
     // TODO: Implement overflow
     // http://www.6502.org/tutorials/decimal_mode.html
@@ -179,14 +179,7 @@ void CPU6502::Op_ADC(uint16_t src) {
     }
 }
 
-void CPU6502::Op_AND(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    A &= m;
-    set_flag(ZERO, A == 0);
-    set_flag(NEGATIVE, A & 0x80);
-}
-
-void CPU6502::Op_ASL(uint16_t src) {
+void CPU6502::Op_ASL(uint16_t &src) {
     uint8_t m = mem->read_byte(src);
     set_flag(CARRY, m & 0x80);
     m = (m << 1) & 0xFE;
@@ -195,180 +188,28 @@ void CPU6502::Op_ASL(uint16_t src) {
     mem->write_byte(src, m);
 }
 
-void CPU6502::Op_ASL_A(uint16_t str) {
-    set_flag(CARRY, A & 0x80);
-    A = (A << 1) & 0xFE;
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_BCC(uint16_t src) {
-    if (!get_flag(CARRY)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BCS(uint16_t src) {
-    if (get_flag(CARRY)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BEQ(uint16_t src) {
-    if (get_flag(ZERO)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BIT(uint16_t src) {
+void CPU6502::Op_BIT(uint16_t &src) {
     uint8_t m = mem->read_byte(src);
     P &= (m & 0xC0) | 0x3F;
     set_flag(ZERO, m & A);
 }
 
-void CPU6502::Op_BMI(uint16_t src) {
-    if (get_flag(NEGATIVE)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BNE(uint16_t src) {
-    if (!get_flag(ZERO)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BPL(uint16_t src) {
-    if (!get_flag(NEGATIVE)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BRK(uint16_t src) {
+void CPU6502::Op_BRK(uint16_t &src) {
     set_flag(INTERRUPT, 1);
     stack_push_word(PC+2);
     stack_push(P);
 }
 
-void CPU6502::Op_BVC(uint16_t src) {
-    if (!get_flag(OVERFLOW)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BVS(uint16_t src) {
-    if (get_flag(OVERFLOW)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_CLC(uint16_t src) { set_flag(CARRY, 0); }
-void CPU6502::Op_CLD(uint16_t src) { set_flag(DECIMAL, 0); }
-void CPU6502::Op_CLI(uint16_t src) { set_flag(INTERRUPT, 0); }
-void CPU6502::Op_CLV(uint16_t src) { set_flag(OVERFLOW, 0); }
-
-void CPU6502::Op_CMP(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    int diff = A - m;
-    set_flag(NEGATIVE, diff < 0);
-    set_flag(ZERO, diff == 0);
-    set_flag(CARRY, diff >= 0);
-}
-
-void CPU6502::Op_CPX(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    int diff = X - m;
-    set_flag(NEGATIVE, diff < 0);
-    set_flag(ZERO, diff == 0);
-    set_flag(CARRY, diff >= 0);
-}
-
-void CPU6502::Op_CPY(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    int diff = Y - m;
-    set_flag(NEGATIVE, diff < 0);
-    set_flag(ZERO, diff == 0);
-    set_flag(CARRY, diff >= 0);
-}
-
-void CPU6502::Op_DEC(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    m--;
-    set_flag(NEGATIVE, m & 0x80);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
-}
-
-void CPU6502::Op_DEX(uint16_t src) {
-    X--;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_DEY(uint16_t src) {
-    Y--;
-    set_flag(NEGATIVE, Y & 0x80);
-    set_flag(ZERO, Y == 0);
-}
-
-void CPU6502::Op_EOR(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    A ^= m;
-    set_flag(ZERO, A == 0);
-    set_flag(NEGATIVE, A & 0x80);
-}
-
-void CPU6502::Op_INC(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    m++;
-    set_flag(NEGATIVE, m & 0x80);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
-}
-
-void CPU6502::Op_INX(uint16_t src) {
-    X++;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_INY(uint16_t src) {
-    Y++;
-    set_flag(NEGATIVE, Y & 0x80);
-    set_flag(ZERO, Y == 0);
-}
-
-void CPU6502::Op_JMP(uint16_t src) {
+void CPU6502::Op_JMP(uint16_t &src) {
     PC = mem->read_byte(src); // TODO: ??
 }
 
-void CPU6502::Op_JSR(uint16_t src) {
+void CPU6502::Op_JSR(uint16_t &src) {
     stack_push_word(PC);
     PC = mem->read_byte(src); // TODO: ??
 }
 
-void CPU6502::Op_LDA(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    A = m;
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_LDX(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    X = m;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_LDY(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    X = m;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_LSR(uint16_t src) {
+void CPU6502::Op_LSR(uint16_t &src) {
     uint8_t m = mem->read_byte(src);
     set_flag(CARRY, m & 0x1);
     m = (m >> 1) & 0x7F;
@@ -377,28 +218,7 @@ void CPU6502::Op_LSR(uint16_t src) {
     mem->write_byte(src, m);
 }
 
-void CPU6502::Op_LSR_A(uint16_t src) {
-    set_flag(CARRY, A & 0x1);
-    A = (A >> 1) & 0x7F;
-    set_flag(NEGATIVE, 0);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_NOP(uint16_t src) {}
-
-void CPU6502::Op_ORA(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    A |= m;
-    set_flag(ZERO, A == 0);
-    set_flag(NEGATIVE, A & 0x80);
-}
-
-void CPU6502::Op_PHA(uint16_t src) { stack_push(A); }
-void CPU6502::Op_PHP(uint16_t src) { stack_push(P); }
-void CPU6502::Op_PLA(uint16_t src) { A = stack_pop(); }
-void CPU6502::Op_PLP(uint16_t src) { P = stack_pop(); }
-
-void CPU6502::Op_ROL(uint16_t src) {
+void CPU6502::Op_ROL(uint16_t &src) {
     uint8_t m = mem->read_byte(src);
     unsigned char temp = get_flag(CARRY);
     set_flag(CARRY, m & 0x80);
@@ -409,16 +229,7 @@ void CPU6502::Op_ROL(uint16_t src) {
     mem->write_byte(src, m);
 }
 
-void CPU6502::Op_ROL_A(uint16_t src) {
-    unsigned char temp = get_flag(CARRY);
-    set_flag(CARRY, A & 0x80);
-    A = (A << 1);
-    A = (temp) ? (A | 0x1) : (A & 0xFE);
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_ROR(uint16_t src) {
+void CPU6502::Op_ROR(uint16_t &src) {
     uint8_t m = mem->read_byte(src);
     unsigned char temp = get_flag(CARRY);
     set_flag(CARRY, m & 0x1);
@@ -429,25 +240,16 @@ void CPU6502::Op_ROR(uint16_t src) {
     mem->write_byte(src, m);
 }
 
-void CPU6502::Op_ROR_A(uint16_t src) {
-    unsigned char temp = get_flag(CARRY);
-    set_flag(CARRY, A & 0x1);
-    A = (A >> 1);
-    A = (temp) ? (A | 0x80) : (A & 0x7F);
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_RTI(uint16_t src) {
+void CPU6502::Op_RTI(uint16_t &src) {
     P = stack_pop();
     PC = stack_pop_word();
 }
 
-void CPU6502::Op_RTS(uint16_t src) {
+void CPU6502::Op_RTS(uint16_t &src) {
     PC = stack_pop_word() + 1;
 }
 
-void CPU6502::Op_SBC(uint16_t src) {
+void CPU6502::Op_SBC(uint16_t &src) {
     // TODO: Fix various behaviors
     // TODO: Implement overflow
     // http://www.6502.org/tutorials/decimal_mode.html
@@ -467,58 +269,6 @@ void CPU6502::Op_SBC(uint16_t src) {
         set_flag(CARRY, ~(diff & 0x80));
         A = diff & 0xFF;
     }
-}
-
-void CPU6502::Op_SEC(uint16_t src) { set_flag(CARRY, 1); }
-void CPU6502::Op_SED(uint16_t src) { set_flag(DECIMAL, 1); }
-void CPU6502::Op_SEI(uint16_t src) { set_flag(INTERRUPT, 1); }
-
-void CPU6502::Op_STA(uint16_t src) {
-    mem->write_byte(src, A);
-}
-
-void CPU6502::Op_STX(uint16_t src) {
-    mem->write_byte(src, X);
-}
-
-void CPU6502::Op_STY(uint16_t src) {
-    mem->write_byte(src, Y);
-}
-
-void CPU6502::Op_TAX(uint16_t src) {
-    X = A;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_TAY(uint16_t src) {
-    Y = A;
-    set_flag(NEGATIVE, Y & 0x80);
-    set_flag(ZERO, Y == 0);
-}
-
-void CPU6502::Op_TSX(uint16_t src) {
-    X = S;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_TXA(uint16_t src) {
-    A = X;
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_TXS(uint16_t src) {
-    S = X;
-    set_flag(NEGATIVE, S & 0x80);
-    set_flag(ZERO, S == 0);
-}
-
-void CPU6502::Op_TYA(uint16_t src) {
-    A = Y;
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
 }
 
 #include <iostream> // TODO: Remove
