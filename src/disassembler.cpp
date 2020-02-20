@@ -154,7 +154,7 @@ Disassembler::Disassembler(uint16_t base)
     register_instr(0x85, "STA", "ZER");
     register_instr(0x95, "STA", "ZEX");
     register_instr(0x8D, "STA", "ABS");
-    register_instr(0x9D, "STA", "ABS");
+    register_instr(0x9D, "STA", "ABX");
     register_instr(0x99, "STA", "ABY");
     register_instr(0x81, "STA", "INX");
     register_instr(0x91, "STA", "INY");

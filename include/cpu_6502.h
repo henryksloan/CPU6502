@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <memory>
+#include <map>
 #include <string>
 #include <stdexcept>
 
@@ -71,64 +72,36 @@ class CPU6502 {
     uint16_t Addr_INY(); // Indirect, Y-indexed
     uint16_t Addr_ABI(); // Absolute indirect
 
-    void Op_ADC(uint16_t);
-    void Op_AND(uint16_t);
-    void Op_ASL(uint16_t); void Op_ASL_A(uint16_t);
-    void Op_BCC(uint16_t);
-    void Op_BCS(uint16_t);
-    void Op_BEQ(uint16_t);
-    void Op_BIT(uint16_t);
-    void Op_BMI(uint16_t);
-    void Op_BNE(uint16_t);
-    void Op_BPL(uint16_t);
-    void Op_BRK(uint16_t);
-    void Op_BVC(uint16_t);
-    void Op_BVS(uint16_t);
-    void Op_CLC(uint16_t);
-    void Op_CLD(uint16_t);
-    void Op_CLI(uint16_t);
-    void Op_CLV(uint16_t);
-    void Op_CMP(uint16_t);
-    void Op_CPX(uint16_t);
-    void Op_CPY(uint16_t);
-    void Op_DEC(uint16_t);
-    void Op_DEX(uint16_t);
-    void Op_DEY(uint16_t);
-    void Op_EOR(uint16_t);
-    void Op_INC(uint16_t);
-    void Op_INX(uint16_t);
-    void Op_INY(uint16_t);
-    void Op_JMP(uint16_t);
-    void Op_JSR(uint16_t);
-    void Op_LDA(uint16_t);
-    void Op_LDX(uint16_t);
-    void Op_LDY(uint16_t);
-    void Op_LSR(uint16_t); void Op_LSR_A(uint16_t);
-    void Op_NOP(uint16_t);
-    void Op_ORA(uint16_t);
-    void Op_PHA(uint16_t);
-    void Op_PHP(uint16_t);
-    void Op_PLA(uint16_t);
-    void Op_PLP(uint16_t);
-    void Op_ROL(uint16_t); void Op_ROL_A(uint16_t);
-    void Op_ROR(uint16_t); void Op_ROR_A(uint16_t);
-    void Op_RTI(uint16_t);
-    void Op_RTS(uint16_t);
-    void Op_SBC(uint16_t);
-    void Op_SEC(uint16_t);
-    void Op_SED(uint16_t);
-    void Op_SEI(uint16_t);
-    void Op_STA(uint16_t);
-    void Op_STX(uint16_t);
-    void Op_STY(uint16_t);
-    void Op_TAX(uint16_t);
-    void Op_TAY(uint16_t);
-    void Op_TSX(uint16_t);
-    void Op_TXA(uint16_t);
-    void Op_TXS(uint16_t);
-    void Op_TYA(uint16_t);
+    void Op_ADC(uint16_t&);
+    void Op_ASL(uint16_t&);
+    void Op_BIT(uint16_t&);
+    void Op_BRK(uint16_t&);
+    void Op_JMP(uint16_t&);
+    void Op_JSR(uint16_t&);
+    void Op_LSR(uint16_t&);
+    void Op_ROL(uint16_t&);
+    void Op_ROR(uint16_t&);
+    void Op_RTI(uint16_t&);
+    void Op_RTS(uint16_t&);
+    void Op_SBC(uint16_t&);
 
-    std::array<Instr, 0x100> instr_table;
+    std::map<std::string, std::function<void(uint16_t&)>> instr_funcs;
+
+    inline std::function<void(uint16_t&)> bind_op(void (CPU6502::*op_f)(uint16_t&)) {
+        return std::bind(op_f, this, std::placeholders::_1);
+    }
+
+    inline std::function<void(uint16_t&)> bit_op(std::function<uint8_t(uint8_t,uint8_t)> f);
+    inline std::function<void(uint16_t&)> branch_op(uint8_t &flag, bool value=true);
+    inline std::function<void(uint16_t&)> set_op(uint8_t &flag, bool value=true);
+    inline std::function<void(uint16_t&)> compare_op(uint8_t &var);
+    inline std::function<void(uint16_t&)> step_op(bool decrement=false);
+    inline std::function<void(uint16_t&)> step_reg_op(uint8_t &reg, bool decrement=false);
+    inline std::function<void(uint16_t&)> load_op(uint8_t reg);
+    inline std::function<void(uint16_t&)> store_op(uint8_t &reg);
+    inline std::function<void(uint16_t&)> push_op(uint8_t reg);
+    inline std::function<void(uint16_t&)> pop_op(uint8_t &reg);
+    inline std::function<void(uint16_t&)> transfer_op(uint8_t reg_a, uint8_t &reg_b); // b -> a
 
     inline void execute_instr(const Instr instr) {
         // TODO: Do something with cycles
@@ -140,7 +113,7 @@ class CPU6502 {
 
     int step();
 
-    inline signed char get_flag(uint8_t mask) {
+    inline unsigned char get_flag(uint8_t mask) {
         return (P & mask) ? 1 : 0;
     }
 
