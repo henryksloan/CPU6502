@@ -157,15 +157,14 @@ uint16_t CPU6502::Addr_INX() { int temp = PC; PC += 2; return mem->read_word(mem
 uint16_t CPU6502::Addr_INY() { int temp = PC; PC += 2; return mem->read_word(mem->read_word(temp+1)) + (int8_t) Y; } // TODO Fix looping around
 uint16_t CPU6502::Addr_ABI() { int temp = PC; PC += 2; return mem->read_word(temp+1); } // TODO: Check this; should it just return the indirect?
 
-void CPU6502::Op_ADC(uint16_t &src) {
+void CPU6502::Op_ADC(uint16_t &data) {
     // TODO: Fix various behaviors
     // TODO: Implement overflow
     // http://www.6502.org/tutorials/decimal_mode.html
-    uint8_t m = mem->read_byte(src);
-    unsigned int sum = A + m + get_flag(CARRY);
+    unsigned int sum = A + data + get_flag(CARRY);
     set_flag(OVERFLOW, sum>0xFF);
     if (get_flag(DECIMAL)) {
-        sum = from_bcd(A) + from_bcd(m) + get_flag(CARRY);
+        sum = from_bcd(A) + from_bcd(data) + get_flag(CARRY);
         set_flag(ZERO, sum == 0); // TODO: What about carry and overflow?
         set_flag(NEGATIVE, sum & 0x80);
         set_flag(CARRY, sum > 99);
@@ -179,85 +178,75 @@ void CPU6502::Op_ADC(uint16_t &src) {
     }
 }
 
-void CPU6502::Op_ASL(uint16_t &src) {
-    uint8_t m = mem->read_byte(src);
-    set_flag(CARRY, m & 0x80);
-    m = (m << 1) & 0xFE;
-    set_flag(NEGATIVE, m & 0x80);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
+void CPU6502::Op_ASL(uint16_t &data) {
+    set_flag(CARRY, data & 0x80);
+    data = (data << 1) & 0xFE;
+    set_flag(NEGATIVE, data & 0x80);
+    set_flag(ZERO, data == 0);
 }
 
-void CPU6502::Op_BIT(uint16_t &src) {
-    uint8_t m = mem->read_byte(src);
-    P &= (m & 0xC0) | 0x3F;
-    set_flag(ZERO, m & A);
+void CPU6502::Op_BIT(uint16_t &data) {
+    P &= (data & 0xC0) | 0x3F;
+    set_flag(ZERO, data & A);
 }
 
-void CPU6502::Op_BRK(uint16_t &src) {
+void CPU6502::Op_BRK(uint16_t &data) {
     set_flag(INTERRUPT, 1);
     stack_push_word(PC+2);
     stack_push(P);
 }
 
-void CPU6502::Op_JMP(uint16_t &src) {
-    PC = mem->read_byte(src); // TODO: ??
+void CPU6502::Op_JMP(uint16_t &data) {
+    PC = mem->read_byte(data); // TODO: ??
 }
 
-void CPU6502::Op_JSR(uint16_t &src) {
+void CPU6502::Op_JSR(uint16_t &data) {
     stack_push_word(PC);
-    PC = mem->read_byte(src); // TODO: ??
+    PC = mem->read_byte(data); // TODO: ??
 }
 
-void CPU6502::Op_LSR(uint16_t &src) {
-    uint8_t m = mem->read_byte(src);
-    set_flag(CARRY, m & 0x1);
-    m = (m >> 1) & 0x7F;
+void CPU6502::Op_LSR(uint16_t &data) {
+    set_flag(CARRY, data & 0x1);
+    data = (data >> 1) & 0x7F;
     set_flag(NEGATIVE, 0);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
+    set_flag(ZERO, data == 0);
 }
 
-void CPU6502::Op_ROL(uint16_t &src) {
-    uint8_t m = mem->read_byte(src);
+void CPU6502::Op_ROL(uint16_t &data) {
     unsigned char temp = get_flag(CARRY);
-    set_flag(CARRY, m & 0x80);
-    m = (m << 1);
-    m = (temp) ? (m | 0x1) : (m & 0xFE);
-    set_flag(NEGATIVE, m & 0x80);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
+    set_flag(CARRY, data & 0x80);
+    data = (data << 1);
+    data = (temp) ? (data | 0x1) : (data & 0xFE);
+    set_flag(NEGATIVE, data & 0x80);
+    set_flag(ZERO, data == 0);
 }
 
-void CPU6502::Op_ROR(uint16_t &src) {
-    uint8_t m = mem->read_byte(src);
+void CPU6502::Op_ROR(uint16_t &data) {
     unsigned char temp = get_flag(CARRY);
-    set_flag(CARRY, m & 0x1);
-    m = (m >> 1);
-    m = (temp) ? (m | 0x80) : (m & 0x7F);
-    set_flag(NEGATIVE, m & 0x80);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
+    set_flag(CARRY, data & 0x1);
+    data = (data >> 1);
+    data = (temp) ? (data | 0x80) : (data & 0x7F);
+    set_flag(NEGATIVE, data & 0x80);
+    set_flag(ZERO, data == 0);
 }
 
-void CPU6502::Op_RTI(uint16_t &src) {
+void CPU6502::Op_RTI(uint16_t &data) {
     P = stack_pop();
     PC = stack_pop_word();
 }
 
-void CPU6502::Op_RTS(uint16_t &src) {
+void CPU6502::Op_RTS(uint16_t &data) {
     PC = stack_pop_word() + 1;
 }
 
-void CPU6502::Op_SBC(uint16_t &src) {
+void CPU6502::Op_SBC(uint16_t &data) {
     // TODO: Fix various behaviors
     // TODO: Implement overflow
     // http://www.6502.org/tutorials/decimal_mode.html
-    uint8_t m = mem->read_byte(src);
-    unsigned int diff = A - m - get_flag(CARRY);
+    unsigned int diff = A - data - get_flag(CARRY);
     set_flag(OVERFLOW, diff>0xFF);
     if (get_flag(DECIMAL)) {
-        diff = from_bcd(A) - from_bcd(m) - get_flag(CARRY);
+        diff = from_bcd(A) - from_bcd(data) - get_flag(CARRY);
         set_flag(ZERO, diff == 0); // TODO: What about carry and overflow?
         set_flag(NEGATIVE, diff & 0x80);
         set_flag(CARRY, ~(diff & 0x80));
