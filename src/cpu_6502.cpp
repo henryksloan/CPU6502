@@ -104,6 +104,7 @@ std::function<void(uint16_t&)> CPU6502::step_op(bool decrement) {
         set_flag(NEGATIVE, data & 0x80);
         set_flag(ZERO, data == 0);
     };
+}
 
 std::function<void(uint16_t&)> CPU6502::step_reg_op(uint8_t &reg, bool decrement) {
     return [this, reg, decrement](uint16_t&) { step_op(decrement)((uint16_t&) reg); };
@@ -114,27 +115,27 @@ std::function<void(uint16_t&)> CPU6502::load_op(uint8_t &reg) {
         reg = data;
         set_flag(NEGATIVE, reg & 0x80);
         set_flag(ZERO, reg == 0);
-    }
+    };
 }
 
 std::function<void(uint16_t&)> CPU6502::store_op(uint8_t reg) {
-    return [this, &reg](uint16_t &data) { data = reg; }
+    return [this, &reg](uint16_t &data) { data = reg; };
 }
 
 std::function<void(uint16_t&)> CPU6502::push_op(uint8_t reg) {
-    return [this, &reg](uint16_t &data) { stack_push(reg); }
+    return [this, &reg](uint16_t &data) { stack_push(reg); };
 }
 
 std::function<void(uint16_t&)> CPU6502::pop_op(uint8_t &reg) {
-    return [this, &reg](uint16_t &data) { reg = stack_pop(); }
+    return [this, &reg](uint16_t &data) { reg = stack_pop(); };
 }
 
 std::function<void(uint16_t&)> CPU6502::transfer_op(uint8_t reg_a, uint8_t &reg_b) {
-    return [this, &reg](uint16_t &data) {
+    return [this, &reg_a, &reg_b](uint16_t &data) {
         reg_b = reg_a;
         set_flag(NEGATIVE, reg_b & 0x80);
         set_flag(ZERO, reg_b == 0);
-    }
+    };
 }
 
 /*
