@@ -39,69 +39,50 @@ class CPU6502 {
 
     std::shared_ptr<Memory> mem;
 
-    /*
-     * Instr defines an instruction with cycle count, behavior and addressing mode
-     * op_f is a function that accepts a src word
-     * addr_f is an addressing mode, that returns a memory address
-     */
-    typedef struct Instr {
-        Instr() {}
-        Instr(CPU6502 *cpu,
-              short cycles,
-              void (CPU6502::*run_f)(uint16_t),
-              uint16_t (CPU6502::*addr_f)(void))
-            : cycles(cycles),
-              run{std::bind(run_f, cpu, std::placeholders::_1)},
-              addr{std::bind(addr_f, cpu)} {}
-        short cycles;
-        std::function<void(uint16_t)> run;
-        std::function<uint16_t(void)> addr;
-    } Instr;
+    uint8_t &Addr_ACC(); // Accumulator
+    uint8_t &Addr_IMM(); // Immediate
+    uint8_t &Addr_ABS(); // Absolute
+    uint8_t &Addr_ZER(); // Zero page
+    uint8_t &Addr_ZEX(); // Zero page, X-indexed
+    uint8_t &Addr_ZEY(); // Zero page, Y-indexed
+    uint8_t &Addr_ABX(); // Absolute, X-indexed
+    uint8_t &Addr_ABY(); // Absolute, Y-indexed
+    uint8_t &Addr_IMP(); // Implied
+    uint8_t &Addr_REL(); // Relative
+    uint8_t &Addr_INX(); // Indirect, X-indexed
+    uint8_t &Addr_INY(); // Indirect, Y-indexed
+    uint8_t &Addr_ABI(); // Absolute indirect
 
-    uint16_t Addr_ACC(); // Accumulator
-    uint16_t Addr_IMM(); // Immediate
-    uint16_t Addr_ABS(); // Absolute
-    uint16_t Addr_ZER(); // Zero page
-    uint16_t Addr_ZEX(); // Zero page, X-indexed
-    uint16_t Addr_ZEY(); // Zero page, Y-indexed
-    uint16_t Addr_ABX(); // Absolute, X-indexed
-    uint16_t Addr_ABY(); // Absolute, Y-indexed
-    uint16_t Addr_IMP(); // Implied
-    uint16_t Addr_REL(); // Relative
-    uint16_t Addr_INX(); // Indirect, X-indexed
-    uint16_t Addr_INY(); // Indirect, Y-indexed
-    uint16_t Addr_ABI(); // Absolute indirect
+    void Op_ADC(uint8_t&);
+    void Op_ASL(uint8_t&);
+    void Op_BIT(uint8_t&);
+    void Op_BRK(uint8_t&);
+    void Op_JMP(uint8_t&);
+    void Op_JSR(uint8_t&);
+    void Op_LSR(uint8_t&);
+    void Op_ROL(uint8_t&);
+    void Op_ROR(uint8_t&);
+    void Op_RTI(uint8_t&);
+    void Op_RTS(uint8_t&);
+    void Op_SBC(uint8_t&);
 
-    void Op_ADC(uint16_t&);
-    void Op_ASL(uint16_t&);
-    void Op_BIT(uint16_t&);
-    void Op_BRK(uint16_t&);
-    void Op_JMP(uint16_t&);
-    void Op_JSR(uint16_t&);
-    void Op_LSR(uint16_t&);
-    void Op_ROL(uint16_t&);
-    void Op_ROR(uint16_t&);
-    void Op_RTI(uint16_t&);
-    void Op_RTS(uint16_t&);
-    void Op_SBC(uint16_t&);
+    std::map<std::string, std::function<void(uint8_t&)>> instr_funcs;
 
-    std::map<std::string, std::function<void(uint16_t&)>> instr_funcs;
-
-    inline std::function<void(uint16_t&)> bind_op(void (CPU6502::*op_f)(uint16_t&)) {
+    inline std::function<void(uint8_t&)> bind_op(void (CPU6502::*op_f)(uint8_t&)) {
         return std::bind(op_f, this, std::placeholders::_1);
     }
 
-    inline std::function<void(uint16_t&)> bit_op(std::function<uint8_t(uint8_t,uint8_t)> f);
-    inline std::function<void(uint16_t&)> branch_op(uint8_t &flag, bool value=true);
-    inline std::function<void(uint16_t&)> set_op(uint8_t &flag, bool value=true);
-    inline std::function<void(uint16_t&)> compare_op(uint8_t &var);
-    inline std::function<void(uint16_t&)> step_op(bool decrement=false);
-    inline std::function<void(uint16_t&)> step_reg_op(uint8_t &reg, bool decrement=false);
-    inline std::function<void(uint16_t&)> load_op(uint8_t reg);
-    inline std::function<void(uint16_t&)> store_op(uint8_t &reg);
-    inline std::function<void(uint16_t&)> push_op(uint8_t reg);
-    inline std::function<void(uint16_t&)> pop_op(uint8_t &reg);
-    inline std::function<void(uint16_t&)> transfer_op(uint8_t reg_a, uint8_t &reg_b); // b -> a
+    inline std::function<void(uint8_t&)> bit_op(std::function<uint8_t(uint8_t,uint8_t)> f);
+    inline std::function<void(uint8_t&)> branch_op(uint8_t &flag, bool value=true);
+    inline std::function<void(uint8_t&)> set_op(uint8_t &flag, bool value=true);
+    inline std::function<void(uint8_t&)> compare_op(uint8_t &var);
+    inline std::function<void(uint8_t&)> step_op(bool decrement=false);
+    inline std::function<void(uint8_t&)> step_reg_op(uint8_t &reg, bool decrement=false);
+    inline std::function<void(uint8_t&)> load_op(uint8_t &reg);
+    inline std::function<void(uint8_t&)> store_op(uint8_t reg);
+    inline std::function<void(uint8_t&)> push_op(uint8_t reg);
+    inline std::function<void(uint8_t&)> pop_op(uint8_t &reg);
+    inline std::function<void(uint8_t&)> transfer_op(uint8_t reg_a, uint8_t &reg_b); // a -> b
 
     inline void execute_instr(const Instr instr) {
         // TODO: Do something with cycles
