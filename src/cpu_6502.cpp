@@ -1,226 +1,185 @@
 #include "cpu_6502.h"
-#include "memory.h"
 
 CPU6502::CPU6502(std::shared_ptr<Memory> mem)
         : mem{std::move(mem)},
-          A{0}, X{0}, Y{0}, P{0}, S{0},
-          PC{0x600} {
-    // TODO: Fill invalids
+          A{0}, X{0}, Y{0}, P{0}, S{0xff},
+          PC{0x600}, offset(0) {
+    mode_funcs["ACC"] = bind_mode(&CPU6502::Addr_ACC);
+    mode_funcs["IMM"] = bind_mode(&CPU6502::Addr_IMM);
+    mode_funcs["ABS"] = bind_mode(&CPU6502::Addr_ABS);
+    mode_funcs["ZER"] = bind_mode(&CPU6502::Addr_ZER);
+    mode_funcs["ZEX"] = bind_mode(&CPU6502::Addr_ZEX);
+    mode_funcs["ZEY"] = bind_mode(&CPU6502::Addr_ZEY);
+    mode_funcs["ABX"] = bind_mode(&CPU6502::Addr_ABX);
+    mode_funcs["ABY"] = bind_mode(&CPU6502::Addr_ABY);
+    mode_funcs["IMP"] = bind_mode(&CPU6502::Addr_IMP);
+    mode_funcs["REL"] = bind_mode(&CPU6502::Addr_REL);
+    mode_funcs["INX"] = bind_mode(&CPU6502::Addr_INX);
+    mode_funcs["INY"] = bind_mode(&CPU6502::Addr_INY);
+    mode_funcs["ABI"] = bind_mode(&CPU6502::Addr_ABI);
 
-    instr_table[0x69] = CPU6502::Instr(this, 2, &CPU6502::Op_ADC, &CPU6502::Addr_IMM);
-    instr_table[0x65] = CPU6502::Instr(this, 3, &CPU6502::Op_ADC, &CPU6502::Addr_ZER);
-    instr_table[0x75] = CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ZEX);
-    instr_table[0x6D] = CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ABS);
-    instr_table[0x7D] = CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ABX);
-    instr_table[0x79] = CPU6502::Instr(this, 4, &CPU6502::Op_ADC, &CPU6502::Addr_ABY);
-    instr_table[0x61] = CPU6502::Instr(this, 6, &CPU6502::Op_ADC, &CPU6502::Addr_INX);
-    instr_table[0x71] = CPU6502::Instr(this, 5, &CPU6502::Op_ADC, &CPU6502::Addr_INY);
+    // TODO: See which of these bind_ops can be replaced
+    instr_funcs["ADC"] = bind_op(&CPU6502::Op_ADC);
+    instr_funcs["AND"] = bit_op(std::bit_and<uint8_t>());
+    instr_funcs["ASL"] = bind_op(&CPU6502::Op_ASL);
+    instr_funcs["BCC"] = branch_op(CARRY, false);
+    instr_funcs["BCS"] = branch_op(CARRY);
+    instr_funcs["BEQ"] = branch_op(ZERO);
+    instr_funcs["BIT"] = bind_op(&CPU6502::Op_BIT);
+    instr_funcs["BMI"] = branch_op(NEGATIVE);
+    instr_funcs["BNE"] = branch_op(ZERO, false);
+    instr_funcs["BPL"] = branch_op(NEGATIVE, false);
+    instr_funcs["BRK"] = bind_op(&CPU6502::Op_BRK);
+    instr_funcs["BVC"] = branch_op(OVERFLOW, false);
+    instr_funcs["BVS"] = branch_op(OVERFLOW);
+    instr_funcs["CLC"] = set_op(CARRY, false);
+    instr_funcs["CLD"] = set_op(DECIMAL, false);
+    instr_funcs["CLI"] = set_op(INTERRUPT, false);
+    instr_funcs["CLV"] = set_op(OVERFLOW, false);
+    instr_funcs["CMP"] = compare_op(A);
+    instr_funcs["CPX"] = compare_op(X);
+    instr_funcs["CPY"] = compare_op(Y);
+    instr_funcs["DEC"] = step_op(true);
+    instr_funcs["DEX"] = step_reg_op(X, true);
+    instr_funcs["DEY"] = step_reg_op(Y, true);
+    instr_funcs["EOR"] = bit_op(std::bit_xor<uint8_t>());
+    instr_funcs["INC"] = step_op();
+    instr_funcs["INX"] = step_reg_op(X);
+    instr_funcs["INY"] = step_reg_op(Y);
+    instr_funcs["JMP"] = bind_op(&CPU6502::Op_JMP); // TODO: See if these two can be generated
+    instr_funcs["JSR"] = bind_op(&CPU6502::Op_JSR);
+    instr_funcs["LDA"] = load_op(A);
+    instr_funcs["LDX"] = load_op(X);
+    instr_funcs["LDY"] = load_op(Y);
+    instr_funcs["LSR"] = bind_op(&CPU6502::Op_LSR);
+    instr_funcs["NOP"] = [](uint8_t&) {};
+    instr_funcs["ORA"] = bit_op(std::bit_or<uint8_t>());
+    instr_funcs["PHA"] = push_op(A);
+    instr_funcs["PHP"] = push_op(P);
+    instr_funcs["PLA"] = pop_op(A);
+    instr_funcs["PLP"] = pop_op(P);
+    instr_funcs["ROL"] = bind_op(&CPU6502::Op_ROL); // TODO: Maybe these too
+    instr_funcs["ROR"] = bind_op(&CPU6502::Op_ROR);
+    instr_funcs["RTI"] = bind_op(&CPU6502::Op_RTI);
+    instr_funcs["RTS"] = bind_op(&CPU6502::Op_RTS);
+    instr_funcs["SBC"] = bind_op(&CPU6502::Op_SBC);
+    instr_funcs["SEC"] = set_op(CARRY);
+    instr_funcs["SED"] = set_op(DECIMAL);
+    instr_funcs["SEI"] = set_op(INTERRUPT);
+    instr_funcs["STA"] = store_op(A);
+    instr_funcs["STX"] = store_op(X);
+    instr_funcs["STY"] = store_op(Y);
+    instr_funcs["TAX"] = transfer_op(A, X);
+    instr_funcs["TAY"] = transfer_op(A, Y);
+    instr_funcs["TSX"] = transfer_op(S, X);
+    instr_funcs["TXA"] = transfer_op(X, A);
+    instr_funcs["TXS"] = transfer_op(X, S);
+    instr_funcs["TYA"] = transfer_op(Y, A);
+}
 
-    instr_table[0x29] = CPU6502::Instr(this, 2, &CPU6502::Op_AND, &CPU6502::Addr_IMM);
-    instr_table[0x25] = CPU6502::Instr(this, 3, &CPU6502::Op_AND, &CPU6502::Addr_ZER);
-    instr_table[0x35] = CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ZEX);
-    instr_table[0x2D] = CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ABS);
-    instr_table[0x3D] = CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ABX);
-    instr_table[0x39] = CPU6502::Instr(this, 4, &CPU6502::Op_AND, &CPU6502::Addr_ABY);
-    instr_table[0x21] = CPU6502::Instr(this, 6, &CPU6502::Op_AND, &CPU6502::Addr_INX);
-    instr_table[0x31] = CPU6502::Instr(this, 5, &CPU6502::Op_AND, &CPU6502::Addr_INY);
+std::function<void(uint8_t&)> CPU6502::bit_op(std::function<uint8_t(uint8_t,uint8_t)> f) {
+    return [this, f](uint8_t &data) {
+        data = f(A, data);
+        set_flag(ZERO, data == 0);
+        set_flag(NEGATIVE, data & 0x80);
+    };
+}
 
-    instr_table[0x0A] = CPU6502::Instr(this, 2, &CPU6502::Op_ASL_A, &CPU6502::Addr_ACC);
-    instr_table[0x06] = CPU6502::Instr(this, 5, &CPU6502::Op_ASL, &CPU6502::Addr_ZER);
-    instr_table[0x16] = CPU6502::Instr(this, 6, &CPU6502::Op_ASL, &CPU6502::Addr_ZEX);
-    instr_table[0x0E] = CPU6502::Instr(this, 6, &CPU6502::Op_ASL, &CPU6502::Addr_ABS);
-    instr_table[0x1E] = CPU6502::Instr(this, 7, &CPU6502::Op_ASL, &CPU6502::Addr_ABX);
+std::function<void(uint8_t&)> CPU6502::branch_op(uint8_t flag, bool value) {
+    return [this, flag, value](uint8_t &data) {
+        unsigned char curr = get_flag(flag);
+        if ((!value && !curr) || (value && curr)) {
+            PC = (uint16_t&) data + offset;
+        }
+    };
+}
 
-    instr_table[0x90] = CPU6502::Instr(this, 2, &CPU6502::Op_BCC, &CPU6502::Addr_REL);
-    instr_table[0xB0] = CPU6502::Instr(this, 2, &CPU6502::Op_BCS, &CPU6502::Addr_REL);
-    instr_table[0xF0] = CPU6502::Instr(this, 2, &CPU6502::Op_BEQ, &CPU6502::Addr_REL);
+std::function<void(uint8_t&)> CPU6502::set_op(uint8_t flag, bool value) {
+    return [this, flag, value](uint8_t &data) {
+        set_flag(flag, value);
+    };
+}
 
-    instr_table[0x24] = CPU6502::Instr(this, 3, &CPU6502::Op_BIT, &CPU6502::Addr_ZER);
-    instr_table[0x2C] = CPU6502::Instr(this, 4, &CPU6502::Op_BIT, &CPU6502::Addr_ABS);
+std::function<void(uint8_t&)> CPU6502::compare_op(uint8_t &reg) {
+    return [this, &reg](uint8_t &data) {
+        int temp = reg - data;
+        set_flag(NEGATIVE, temp & 0x80);
+        set_flag(ZERO, temp == 0);
+        set_flag(CARRY, temp > 0xff);
+    };
+}
 
-    instr_table[0x30] = CPU6502::Instr(this, 2, &CPU6502::Op_BMI, &CPU6502::Addr_REL);
-    instr_table[0xD0] = CPU6502::Instr(this, 2, &CPU6502::Op_BNE, &CPU6502::Addr_REL);
-    instr_table[0x10] = CPU6502::Instr(this, 2, &CPU6502::Op_BPL, &CPU6502::Addr_REL);
+std::function<void(uint8_t&)> CPU6502::step_op(bool decrement) {
+    return [this, decrement](uint8_t &data) {
+        if (decrement) {
+            data--;
+        }
+        else {
+            data++;
+        }
+        set_flag(NEGATIVE, data & 0x80);
+        set_flag(ZERO, data == 0);
+    };
+}
 
-    instr_table[0x00] = CPU6502::Instr(this, 7, &CPU6502::Op_BRK, &CPU6502::Addr_IMP);
+std::function<void(uint8_t&)> CPU6502::step_reg_op(uint8_t &reg, bool decrement) {
+    return [this, &reg, decrement](uint8_t&) { step_op(decrement)(reg); };
+}
 
-    instr_table[0x50] = CPU6502::Instr(this, 2, &CPU6502::Op_BVC, &CPU6502::Addr_REL);
-    instr_table[0x70] = CPU6502::Instr(this, 2, &CPU6502::Op_BVS, &CPU6502::Addr_REL);
+std::function<void(uint8_t&)> CPU6502::load_op(uint8_t &reg) {
+    return [this, &reg](uint8_t &data) {
+        reg = data;
+        set_flag(NEGATIVE, reg & 0x80);
+        set_flag(ZERO, reg == 0);
+    };
+}
 
-    instr_table[0x18] = CPU6502::Instr(this, 2, &CPU6502::Op_CLC, &CPU6502::Addr_IMP);
-    instr_table[0xD8] = CPU6502::Instr(this, 2, &CPU6502::Op_CLD, &CPU6502::Addr_IMP);
-    instr_table[0x58] = CPU6502::Instr(this, 2, &CPU6502::Op_CLI, &CPU6502::Addr_IMP);
-    instr_table[0xB8] = CPU6502::Instr(this, 2, &CPU6502::Op_CLV, &CPU6502::Addr_IMP);
+std::function<void(uint8_t&)> CPU6502::store_op(uint8_t &reg) {
+    return [this, &reg](uint8_t &data) { data = reg; };
+}
 
-    instr_table[0xC9] = CPU6502::Instr(this, 2, &CPU6502::Op_CMP, &CPU6502::Addr_IMM);
-    instr_table[0xC5] = CPU6502::Instr(this, 3, &CPU6502::Op_CMP, &CPU6502::Addr_ZER);
-    instr_table[0xD5] = CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ZEX);
-    instr_table[0xCD] = CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ABS);
-    instr_table[0xDD] = CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ABX);
-    instr_table[0xD9] = CPU6502::Instr(this, 4, &CPU6502::Op_CMP, &CPU6502::Addr_ABY);
-    instr_table[0xC1] = CPU6502::Instr(this, 6, &CPU6502::Op_CMP, &CPU6502::Addr_INX);
-    instr_table[0xD1] = CPU6502::Instr(this, 5, &CPU6502::Op_CMP, &CPU6502::Addr_INY);
+std::function<void(uint8_t&)> CPU6502::push_op(uint8_t &reg) {
+    return [this, &reg](uint8_t &data) { stack_push(reg); };
+}
 
-    instr_table[0xE0] = CPU6502::Instr(this, 2, &CPU6502::Op_CPX, &CPU6502::Addr_IMM);
-    instr_table[0xE4] = CPU6502::Instr(this, 3, &CPU6502::Op_CPX, &CPU6502::Addr_ZER);
-    instr_table[0xEC] = CPU6502::Instr(this, 4, &CPU6502::Op_CPX, &CPU6502::Addr_ABS);
+std::function<void(uint8_t&)> CPU6502::pop_op(uint8_t &reg) {
+    return [this, &reg](uint8_t &data) { reg = stack_pop(); };
+}
 
-    instr_table[0xC0] = CPU6502::Instr(this, 2, &CPU6502::Op_CPY, &CPU6502::Addr_IMM);
-    instr_table[0xC4] = CPU6502::Instr(this, 3, &CPU6502::Op_CPY, &CPU6502::Addr_ZER);
-    instr_table[0xCC] = CPU6502::Instr(this, 4, &CPU6502::Op_CPY, &CPU6502::Addr_ABS);
-
-    instr_table[0xC6] = CPU6502::Instr(this, 5, &CPU6502::Op_DEC, &CPU6502::Addr_ZER);
-    instr_table[0xD6] = CPU6502::Instr(this, 6, &CPU6502::Op_DEC, &CPU6502::Addr_ZEX);
-    instr_table[0xCE] = CPU6502::Instr(this, 6, &CPU6502::Op_DEC, &CPU6502::Addr_ABS);
-    instr_table[0xDE] = CPU6502::Instr(this, 7, &CPU6502::Op_DEC, &CPU6502::Addr_ABX);
-
-    instr_table[0xCA] = CPU6502::Instr(this, 2, &CPU6502::Op_DEX, &CPU6502::Addr_IMP);
-    instr_table[0x88] = CPU6502::Instr(this, 2, &CPU6502::Op_DEY, &CPU6502::Addr_IMP);
-
-    instr_table[0x49] = CPU6502::Instr(this, 2, &CPU6502::Op_EOR, &CPU6502::Addr_IMM);
-    instr_table[0x45] = CPU6502::Instr(this, 3, &CPU6502::Op_EOR, &CPU6502::Addr_ZER);
-    instr_table[0x55] = CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ZEX);
-    instr_table[0x4D] = CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ABS);
-    instr_table[0x5D] = CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ABX);
-    instr_table[0x59] = CPU6502::Instr(this, 4, &CPU6502::Op_EOR, &CPU6502::Addr_ABY);
-    instr_table[0x41] = CPU6502::Instr(this, 6, &CPU6502::Op_EOR, &CPU6502::Addr_INX);
-    instr_table[0x51] = CPU6502::Instr(this, 5, &CPU6502::Op_EOR, &CPU6502::Addr_INY);
-
-    instr_table[0xE6] = CPU6502::Instr(this, 5, &CPU6502::Op_INC, &CPU6502::Addr_ZER);
-    instr_table[0xF6] = CPU6502::Instr(this, 6, &CPU6502::Op_INC, &CPU6502::Addr_ZEX);
-    instr_table[0xEE] = CPU6502::Instr(this, 6, &CPU6502::Op_INC, &CPU6502::Addr_ABS);
-    instr_table[0xFE] = CPU6502::Instr(this, 7, &CPU6502::Op_INC, &CPU6502::Addr_ABX);
-
-    instr_table[0xE8] = CPU6502::Instr(this, 2, &CPU6502::Op_INX, &CPU6502::Addr_IMP);
-    instr_table[0xC8] = CPU6502::Instr(this, 2, &CPU6502::Op_INY, &CPU6502::Addr_IMP);
-
-    instr_table[0x4C] = CPU6502::Instr(this, 3, &CPU6502::Op_JMP, &CPU6502::Addr_ABS);
-    instr_table[0x6C] = CPU6502::Instr(this, 5, &CPU6502::Op_JMP, &CPU6502::Addr_ABI);
-    instr_table[0x20] = CPU6502::Instr(this, 6, &CPU6502::Op_JSR, &CPU6502::Addr_ABS);
-
-    instr_table[0xA9] = CPU6502::Instr(this, 2, &CPU6502::Op_LDA, &CPU6502::Addr_IMM);
-    instr_table[0xA5] = CPU6502::Instr(this, 3, &CPU6502::Op_LDA, &CPU6502::Addr_ZER);
-    instr_table[0xB5] = CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ZEX);
-    instr_table[0xAD] = CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ABS);
-    instr_table[0xBD] = CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ABX);
-    instr_table[0xB9] = CPU6502::Instr(this, 4, &CPU6502::Op_LDA, &CPU6502::Addr_ABY);
-    instr_table[0xA1] = CPU6502::Instr(this, 6, &CPU6502::Op_LDA, &CPU6502::Addr_INX);
-    instr_table[0xB1] = CPU6502::Instr(this, 5, &CPU6502::Op_LDA, &CPU6502::Addr_INY);
-
-    instr_table[0xA2] = CPU6502::Instr(this, 2, &CPU6502::Op_LDX, &CPU6502::Addr_IMM);
-    instr_table[0xA6] = CPU6502::Instr(this, 3, &CPU6502::Op_LDX, &CPU6502::Addr_ZER);
-    instr_table[0xB6] = CPU6502::Instr(this, 4, &CPU6502::Op_LDX, &CPU6502::Addr_ZEX);
-    instr_table[0xAE] = CPU6502::Instr(this, 4, &CPU6502::Op_LDX, &CPU6502::Addr_ABS);
-    instr_table[0xBE] = CPU6502::Instr(this, 4, &CPU6502::Op_LDX, &CPU6502::Addr_ABX);
-
-    instr_table[0xA0] = CPU6502::Instr(this, 2, &CPU6502::Op_LDY, &CPU6502::Addr_IMM);
-    instr_table[0xA4] = CPU6502::Instr(this, 3, &CPU6502::Op_LDY, &CPU6502::Addr_ZER);
-    instr_table[0xB4] = CPU6502::Instr(this, 4, &CPU6502::Op_LDY, &CPU6502::Addr_ZEX);
-    instr_table[0xAC] = CPU6502::Instr(this, 4, &CPU6502::Op_LDY, &CPU6502::Addr_ABS);
-    instr_table[0xBC] = CPU6502::Instr(this, 4, &CPU6502::Op_LDY, &CPU6502::Addr_ABX);
-
-    instr_table[0x4A] = CPU6502::Instr(this, 2, &CPU6502::Op_LSR_A, &CPU6502::Addr_ACC);
-    instr_table[0x46] = CPU6502::Instr(this, 5, &CPU6502::Op_LSR, &CPU6502::Addr_ZER);
-    instr_table[0x56] = CPU6502::Instr(this, 6, &CPU6502::Op_LSR, &CPU6502::Addr_ZEX);
-    instr_table[0x4E] = CPU6502::Instr(this, 6, &CPU6502::Op_LSR, &CPU6502::Addr_ABS);
-    instr_table[0x5E] = CPU6502::Instr(this, 7, &CPU6502::Op_LSR, &CPU6502::Addr_ABX);
-
-    instr_table[0xEA] = CPU6502::Instr(this, 2, &CPU6502::Op_NOP, &CPU6502::Addr_IMP);
-
-    instr_table[0x09] = CPU6502::Instr(this, 2, &CPU6502::Op_ORA, &CPU6502::Addr_IMM);
-    instr_table[0x05] = CPU6502::Instr(this, 3, &CPU6502::Op_ORA, &CPU6502::Addr_ZER);
-    instr_table[0x15] = CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ZEX);
-    instr_table[0x0D] = CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ABS);
-    instr_table[0x1D] = CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ABX);
-    instr_table[0x19] = CPU6502::Instr(this, 4, &CPU6502::Op_ORA, &CPU6502::Addr_ABY);
-    instr_table[0x01] = CPU6502::Instr(this, 6, &CPU6502::Op_ORA, &CPU6502::Addr_INX);
-    instr_table[0x11] = CPU6502::Instr(this, 5, &CPU6502::Op_ORA, &CPU6502::Addr_INY);
-
-    instr_table[0x48] = CPU6502::Instr(this, 3, &CPU6502::Op_PHA, &CPU6502::Addr_IMP);
-    instr_table[0x08] = CPU6502::Instr(this, 3, &CPU6502::Op_PHP, &CPU6502::Addr_IMP);
-    instr_table[0x68] = CPU6502::Instr(this, 4, &CPU6502::Op_PLA, &CPU6502::Addr_IMP);
-    instr_table[0x28] = CPU6502::Instr(this, 4, &CPU6502::Op_PLP, &CPU6502::Addr_IMP);
-
-    instr_table[0x2A] = CPU6502::Instr(this, 2, &CPU6502::Op_ROL_A, &CPU6502::Addr_ACC);
-    instr_table[0x26] = CPU6502::Instr(this, 5, &CPU6502::Op_ROL, &CPU6502::Addr_ZER);
-    instr_table[0x36] = CPU6502::Instr(this, 6, &CPU6502::Op_ROL, &CPU6502::Addr_ZEX);
-    instr_table[0x2E] = CPU6502::Instr(this, 6, &CPU6502::Op_ROL, &CPU6502::Addr_ABS);
-    instr_table[0x3E] = CPU6502::Instr(this, 7, &CPU6502::Op_ROL, &CPU6502::Addr_ABX);
-
-    instr_table[0x6A] = CPU6502::Instr(this, 2, &CPU6502::Op_ROR_A, &CPU6502::Addr_ACC);
-    instr_table[0x66] = CPU6502::Instr(this, 5, &CPU6502::Op_ROR, &CPU6502::Addr_ZER);
-    instr_table[0x76] = CPU6502::Instr(this, 6, &CPU6502::Op_ROR, &CPU6502::Addr_ZEX);
-    instr_table[0x6E] = CPU6502::Instr(this, 6, &CPU6502::Op_ROR, &CPU6502::Addr_ABS);
-    instr_table[0x7E] = CPU6502::Instr(this, 7, &CPU6502::Op_ROR, &CPU6502::Addr_ABX);
-
-    instr_table[0x40] = CPU6502::Instr(this, 6, &CPU6502::Op_RTI, &CPU6502::Addr_IMP);
-    instr_table[0x60] = CPU6502::Instr(this, 6, &CPU6502::Op_RTS, &CPU6502::Addr_IMP);
-
-    instr_table[0xE9] = CPU6502::Instr(this, 2, &CPU6502::Op_SBC, &CPU6502::Addr_IMM);
-    instr_table[0xE5] = CPU6502::Instr(this, 3, &CPU6502::Op_SBC, &CPU6502::Addr_ZER);
-    instr_table[0xF5] = CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ZEX);
-    instr_table[0xED] = CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ABS);
-    instr_table[0xFD] = CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ABX);
-    instr_table[0xF9] = CPU6502::Instr(this, 4, &CPU6502::Op_SBC, &CPU6502::Addr_ABY);
-    instr_table[0xE1] = CPU6502::Instr(this, 6, &CPU6502::Op_SBC, &CPU6502::Addr_INX);
-    instr_table[0xF1] = CPU6502::Instr(this, 5, &CPU6502::Op_SBC, &CPU6502::Addr_INY);
-
-    instr_table[0x38] = CPU6502::Instr(this, 2, &CPU6502::Op_SEC, &CPU6502::Addr_IMP);
-    instr_table[0xF8] = CPU6502::Instr(this, 2, &CPU6502::Op_SED, &CPU6502::Addr_IMP);
-    instr_table[0x78] = CPU6502::Instr(this, 2, &CPU6502::Op_SEI, &CPU6502::Addr_IMP);
-
-    instr_table[0x85] = CPU6502::Instr(this, 3, &CPU6502::Op_STA, &CPU6502::Addr_ZER);
-    instr_table[0x95] = CPU6502::Instr(this, 4, &CPU6502::Op_STA, &CPU6502::Addr_ZEX);
-    instr_table[0x8D] = CPU6502::Instr(this, 4, &CPU6502::Op_STA, &CPU6502::Addr_ABS);
-    instr_table[0x9D] = CPU6502::Instr(this, 5, &CPU6502::Op_STA, &CPU6502::Addr_ABS);
-    instr_table[0x99] = CPU6502::Instr(this, 5, &CPU6502::Op_STA, &CPU6502::Addr_ABY);
-    instr_table[0x81] = CPU6502::Instr(this, 6, &CPU6502::Op_STA, &CPU6502::Addr_INX);
-    instr_table[0x91] = CPU6502::Instr(this, 6, &CPU6502::Op_STA, &CPU6502::Addr_INY);
-
-    instr_table[0x86] = CPU6502::Instr(this, 3, &CPU6502::Op_STX, &CPU6502::Addr_ZER);
-    instr_table[0x96] = CPU6502::Instr(this, 4, &CPU6502::Op_STX, &CPU6502::Addr_ZEY);
-    instr_table[0x8E] = CPU6502::Instr(this, 4, &CPU6502::Op_STX, &CPU6502::Addr_ABS);
-
-    instr_table[0x84] = CPU6502::Instr(this, 3, &CPU6502::Op_STY, &CPU6502::Addr_ZER);
-    instr_table[0x94] = CPU6502::Instr(this, 4, &CPU6502::Op_STY, &CPU6502::Addr_ZEX);
-    instr_table[0x8C] = CPU6502::Instr(this, 4, &CPU6502::Op_STY, &CPU6502::Addr_ABS);
-
-    instr_table[0xAA] = CPU6502::Instr(this, 2, &CPU6502::Op_TAX, &CPU6502::Addr_IMP);
-    instr_table[0xA8] = CPU6502::Instr(this, 2, &CPU6502::Op_TAY, &CPU6502::Addr_IMP);
-    instr_table[0xBA] = CPU6502::Instr(this, 2, &CPU6502::Op_TSX, &CPU6502::Addr_IMP);
-    instr_table[0x8A] = CPU6502::Instr(this, 2, &CPU6502::Op_TXA, &CPU6502::Addr_IMP);
-    instr_table[0x9A] = CPU6502::Instr(this, 2, &CPU6502::Op_TXS, &CPU6502::Addr_IMP);
-    instr_table[0x98] = CPU6502::Instr(this, 2, &CPU6502::Op_TYA, &CPU6502::Addr_IMP);
+std::function<void(uint8_t&)> CPU6502::transfer_op(uint8_t reg_a, uint8_t &reg_b) {
+    return [this, &reg_a, &reg_b](uint8_t &data) {
+        reg_b = reg_a;
+        set_flag(NEGATIVE, reg_b & 0x80);
+        set_flag(ZERO, reg_b == 0);
+    };
 }
 
 /*
  * Addressing modes
- * Return the address an instruction will use to reference memory
- * Does NOT return the VALUE at that memory (hence IMM returns PC+1)
+ * TODO: Document reference behavior
  */
-uint16_t CPU6502::Addr_ACC() { return 0; } // Not implemented
-uint16_t CPU6502::Addr_IMM() { return PC++; }
-uint16_t CPU6502::Addr_ABS() { int temp = PC; PC += 2; return mem->read_word(temp+1); }
-uint16_t CPU6502::Addr_ZER() { return mem->read_byte(PC++); }
-uint16_t CPU6502::Addr_ZEX() { return mem->read_byte(PC++) + (int8_t) X; } // TODO Fix looping around
-uint16_t CPU6502::Addr_ZEY() { return mem->read_byte(PC++) + (int8_t) Y; } // TODO Fix looping around
-uint16_t CPU6502::Addr_ABX() { int temp = PC; PC += 2; return mem->read_word(temp+1) + (int8_t) X; } // TODO Fix looping around
-uint16_t CPU6502::Addr_ABY() { int temp = PC; PC += 2; return mem->read_word(temp+1) + (int8_t) Y; } // TODO Fix looping around
-uint16_t CPU6502::Addr_IMP() { return 0; }
-uint16_t CPU6502::Addr_REL() { int temp = PC; PC++; return temp + mem->read_byte(temp+1); }
-uint16_t CPU6502::Addr_INX() { int temp = PC; PC += 2; return mem->read_word(mem->read_word(temp+1) + (int8_t) X); } // TODO Fix looping around
-uint16_t CPU6502::Addr_INY() { int temp = PC; PC += 2; return mem->read_word(mem->read_word(temp+1)) + (int8_t) Y; } // TODO Fix looping around
-uint16_t CPU6502::Addr_ABI() { int temp = PC; PC += 2; return mem->read_word(temp+1); } // TODO: Check this; should it just return the indirect?
+uint8_t &CPU6502::Addr_ACC() { return A; } // Not implemented
+uint8_t &CPU6502::Addr_IMM() { return mem->ref_byte(++PC); }
+uint8_t &CPU6502::Addr_ABS() { offset = 0; int temp = PC; PC += 2; return mem->ref_byte(temp+1); }
+uint8_t &CPU6502::Addr_ZER() { return mem->ref_byte(mem->read_byte(++PC)); }
+uint8_t &CPU6502::Addr_ZEX() { return mem->ref_byte(mem->read_byte(++PC) + X); } // TODO Fix looping around
+uint8_t &CPU6502::Addr_ZEY() { return mem->ref_byte(mem->read_byte(++PC) + Y); } // TODO Fix looping around
+uint8_t &CPU6502::Addr_ABX() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + X); } // TODO Fix looping around
+uint8_t &CPU6502::Addr_ABY() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + Y); } // TODO Fix looping around
+uint8_t &CPU6502::Addr_IMP() { return mem->ref_byte(0); } // Dummy implementation by DavidBuchanan314
+uint8_t &CPU6502::Addr_REL() { int temp = PC; PC++; offset=(int8_t) mem->read_byte(temp+1); return (uint8_t&) PC; }
+uint8_t &CPU6502::Addr_INX() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(mem->read_byte(temp+1) + (int8_t) X)); } // TODO Fix looping around
+uint8_t &CPU6502::Addr_INY() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(mem->read_byte(temp+1)) + (int8_t) Y); } // TODO Fix looping around
+uint8_t &CPU6502::Addr_ABI() { offset=0; int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); } // TODO: Check this; should it just return the indirect?
 
-void CPU6502::Op_ADC(uint16_t src) {
+void CPU6502::Op_ADC(uint8_t &data) {
     // TODO: Fix various behaviors
     // TODO: Implement overflow
     // http://www.6502.org/tutorials/decimal_mode.html
-    uint8_t m = mem->read_byte(src);
-    unsigned int sum = A + m + get_flag(CARRY);
+    unsigned int sum = A + data + get_flag(CARRY);
     set_flag(OVERFLOW, sum>0xFF);
     if (get_flag(DECIMAL)) {
-        sum = from_bcd(A) + from_bcd(m) + get_flag(CARRY);
+        sum = from_bcd(A) + from_bcd(data) + get_flag(CARRY);
         set_flag(ZERO, sum == 0); // TODO: What about carry and overflow?
         set_flag(NEGATIVE, sum & 0x80);
         set_flag(CARRY, sum > 99);
@@ -234,283 +193,75 @@ void CPU6502::Op_ADC(uint16_t src) {
     }
 }
 
-void CPU6502::Op_AND(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    A &= m;
-    set_flag(ZERO, A == 0);
-    set_flag(NEGATIVE, A & 0x80);
+void CPU6502::Op_ASL(uint8_t &data) {
+    set_flag(CARRY, data & 0x80);
+    data = (data << 1) & 0xFE;
+    set_flag(NEGATIVE, data & 0x80);
+    set_flag(ZERO, data == 0);
 }
 
-void CPU6502::Op_ASL(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    set_flag(CARRY, m & 0x80);
-    m = (m << 1) & 0xFE;
-    set_flag(NEGATIVE, m & 0x80);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
+void CPU6502::Op_BIT(uint8_t &data) {
+    P &= (data & 0xC0) | 0x3F;
+    set_flag(ZERO, data & A);
 }
 
-void CPU6502::Op_ASL_A(uint16_t) {
-    set_flag(CARRY, A & 0x80);
-    A = (A << 1) & 0xFE;
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_BCC(uint16_t src) {
-    if (!get_flag(CARRY)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BCS(uint16_t src) {
-    if (get_flag(CARRY)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BEQ(uint16_t src) {
-    if (get_flag(ZERO)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BIT(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    P &= (m & 0xC0) | 0x3F;
-    set_flag(ZERO, m & A);
-}
-
-void CPU6502::Op_BMI(uint16_t src) {
-    if (get_flag(NEGATIVE)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BNE(uint16_t src) {
-    if (!get_flag(ZERO)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BPL(uint16_t src) {
-    if (!get_flag(NEGATIVE)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_BRK(uint16_t src) {
+void CPU6502::Op_BRK(uint8_t &data) {
     set_flag(INTERRUPT, 1);
     stack_push_word(PC+2);
     stack_push(P);
 }
 
-void CPU6502::Op_BVC(uint16_t src) {
-    if (!get_flag(OVERFLOW)) {
-        PC = mem->read_byte(src);
-    }
+void CPU6502::Op_JMP(uint8_t &data) {
+    PC = ((uint16_t&) data+offset); // TODO: ??
 }
 
-void CPU6502::Op_BVS(uint16_t src) {
-    if (get_flag(OVERFLOW)) {
-        PC = mem->read_byte(src);
-    }
-}
-
-void CPU6502::Op_CLC(uint16_t src) { set_flag(CARRY, 0); }
-void CPU6502::Op_CLD(uint16_t src) { set_flag(DECIMAL, 0); }
-void CPU6502::Op_CLI(uint16_t src) { set_flag(INTERRUPT, 0); }
-void CPU6502::Op_CLV(uint16_t src) { set_flag(OVERFLOW, 0); }
-
-void CPU6502::Op_CMP(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    int diff = A - m;
-    set_flag(NEGATIVE, diff < 0);
-    set_flag(ZERO, diff == 0);
-    set_flag(CARRY, diff >= 0);
-}
-
-void CPU6502::Op_CPX(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    int diff = X - m;
-    set_flag(NEGATIVE, diff < 0);
-    set_flag(ZERO, diff == 0);
-    set_flag(CARRY, diff >= 0);
-}
-
-void CPU6502::Op_CPY(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    int diff = Y - m;
-    set_flag(NEGATIVE, diff < 0);
-    set_flag(ZERO, diff == 0);
-    set_flag(CARRY, diff >= 0);
-}
-
-void CPU6502::Op_DEC(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    m--;
-    set_flag(NEGATIVE, m & 0x80);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
-}
-
-void CPU6502::Op_DEX(uint16_t src) {
-    X--;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_DEY(uint16_t src) {
-    Y--;
-    set_flag(NEGATIVE, Y & 0x80);
-    set_flag(ZERO, Y == 0);
-}
-
-void CPU6502::Op_EOR(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    A ^= m;
-    set_flag(ZERO, A == 0);
-    set_flag(NEGATIVE, A & 0x80);
-}
-
-void CPU6502::Op_INC(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    m++;
-    set_flag(NEGATIVE, m & 0x80);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
-}
-
-void CPU6502::Op_INX(uint16_t src) {
-    X++;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_INY(uint16_t src) {
-    Y++;
-    set_flag(NEGATIVE, Y & 0x80);
-    set_flag(ZERO, Y == 0);
-}
-
-void CPU6502::Op_JMP(uint16_t src) {
-    PC = mem->read_byte(src); // TODO: ??
-}
-
-void CPU6502::Op_JSR(uint16_t src) {
+void CPU6502::Op_JSR(uint8_t &data) {
     stack_push_word(PC);
-    PC = mem->read_byte(src); // TODO: ??
+    PC = ((uint16_t&) data+offset-1); // TODO: ??
 }
 
-void CPU6502::Op_LDA(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    A = m;
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_LDX(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    X = m;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_LDY(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    X = m;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_LSR(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    set_flag(CARRY, m & 0x1);
-    m = (m >> 1) & 0x7F;
+void CPU6502::Op_LSR(uint8_t &data) {
+    set_flag(CARRY, data & 0x1);
+    data = (data >> 1) & 0x7F;
     set_flag(NEGATIVE, 0);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
+    set_flag(ZERO, data == 0);
 }
 
-void CPU6502::Op_LSR_A(uint16_t) {
-    set_flag(CARRY, A & 0x1);
-    A = (A >> 1) & 0x7F;
-    set_flag(NEGATIVE, 0);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_NOP(uint16_t src) {}
-
-void CPU6502::Op_ORA(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    A |= m;
-    set_flag(ZERO, A == 0);
-    set_flag(NEGATIVE, A & 0x80);
-}
-
-void CPU6502::Op_PHA(uint16_t src) { stack_push(A); }
-void CPU6502::Op_PHP(uint16_t src) { stack_push(P); }
-void CPU6502::Op_PLA(uint16_t src) { A = stack_pop(); }
-void CPU6502::Op_PLP(uint16_t src) { P = stack_pop(); }
-
-void CPU6502::Op_ROL(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
+void CPU6502::Op_ROL(uint8_t &data) {
     unsigned char temp = get_flag(CARRY);
-    set_flag(CARRY, m & 0x80);
-    m = (m << 1);
-    m = (temp) ? (m | 0x1) : (m & 0xFE);
-    set_flag(NEGATIVE, m & 0x80);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
+    set_flag(CARRY, data & 0x80);
+    data = (data << 1);
+    data = (temp) ? (data | 0x1) : (data & 0xFE);
+    set_flag(NEGATIVE, data & 0x80);
+    set_flag(ZERO, data == 0);
 }
 
-void CPU6502::Op_ROL_A(uint16_t src) {
+void CPU6502::Op_ROR(uint8_t &data) {
     unsigned char temp = get_flag(CARRY);
-    set_flag(CARRY, A & 0x80);
-    A = (A << 1);
-    A = (temp) ? (A | 0x1) : (A & 0xFE);
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
+    set_flag(CARRY, data & 0x1);
+    data = (data >> 1);
+    data = (temp) ? (data | 0x80) : (data & 0x7F);
+    set_flag(NEGATIVE, data & 0x80);
+    set_flag(ZERO, data == 0);
 }
 
-void CPU6502::Op_ROR(uint16_t src) {
-    uint8_t m = mem->read_byte(src);
-    unsigned char temp = get_flag(CARRY);
-    set_flag(CARRY, m & 0x1);
-    m = (m >> 1);
-    m = (temp) ? (m | 0x80) : (m & 0x7F);
-    set_flag(NEGATIVE, m & 0x80);
-    set_flag(ZERO, m == 0);
-    mem->write_byte(src, m);
-}
-
-void CPU6502::Op_ROR_A(uint16_t src) {
-    unsigned char temp = get_flag(CARRY);
-    set_flag(CARRY, A & 0x1);
-    A = (A >> 1);
-    A = (temp) ? (A | 0x80) : (A & 0x7F);
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_RTI(uint16_t src) {
+void CPU6502::Op_RTI(uint8_t &data) {
     P = stack_pop();
     PC = stack_pop_word();
 }
 
-void CPU6502::Op_RTS(uint16_t src) {
-    PC = stack_pop_word() + 1;
+void CPU6502::Op_RTS(uint8_t &data) {
+    PC = stack_pop_word();
 }
 
-void CPU6502::Op_SBC(uint16_t src) {
+void CPU6502::Op_SBC(uint8_t &data) {
     // TODO: Fix various behaviors
     // TODO: Implement overflow
     // http://www.6502.org/tutorials/decimal_mode.html
-    uint8_t m = mem->read_byte(src);
-    unsigned int diff = A - m - get_flag(CARRY);
+    unsigned int diff = A - data - get_flag(CARRY);
     set_flag(OVERFLOW, diff>0xFF);
     if (get_flag(DECIMAL)) {
-        diff = from_bcd(A) - from_bcd(m) - get_flag(CARRY);
+        diff = from_bcd(A) - from_bcd(data) - get_flag(CARRY);
         set_flag(ZERO, diff == 0); // TODO: What about carry and overflow?
         set_flag(NEGATIVE, diff & 0x80);
         set_flag(CARRY, ~(diff & 0x80));
@@ -524,70 +275,16 @@ void CPU6502::Op_SBC(uint16_t src) {
     }
 }
 
-void CPU6502::Op_SEC(uint16_t src) { set_flag(CARRY, 1); }
-void CPU6502::Op_SED(uint16_t src) { set_flag(DECIMAL, 1); }
-void CPU6502::Op_SEI(uint16_t src) { set_flag(INTERRUPT, 1); }
-
-void CPU6502::Op_STA(uint16_t src) {
-    mem->write_byte(src, A);
-}
-
-void CPU6502::Op_STX(uint16_t src) {
-    mem->write_byte(src, X);
-}
-
-void CPU6502::Op_STY(uint16_t src) {
-    mem->write_byte(src, Y);
-}
-
-void CPU6502::Op_TAX(uint16_t src) {
-    X = A;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_TAY(uint16_t src) {
-    Y = A;
-    set_flag(NEGATIVE, Y & 0x80);
-    set_flag(ZERO, Y == 0);
-}
-
-void CPU6502::Op_TSX(uint16_t src) {
-    X = S;
-    set_flag(NEGATIVE, X & 0x80);
-    set_flag(ZERO, X == 0);
-}
-
-void CPU6502::Op_TXA(uint16_t src) {
-    A = X;
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
-}
-
-void CPU6502::Op_TXS(uint16_t src) {
-    S = X;
-    set_flag(NEGATIVE, S & 0x80);
-    set_flag(ZERO, S == 0);
-}
-
-void CPU6502::Op_TYA(uint16_t src) {
-    A = Y;
-    set_flag(NEGATIVE, A & 0x80);
-    set_flag(ZERO, A == 0);
-}
-
 #include <iostream> // TODO: Remove
 int CPU6502::step() {
     uint8_t opcode = mem->read_byte(PC);
-    // std::cout << std::hex << (int) PC << " " << (int) opcode << '\n';
-    std::cout << std::hex << (int) opcode << " ";
     // if (opcode == 0x00) return 0; // TEMP
-    const Instr instr = instr_table[opcode];
-    execute_instr(instr);
+    InstrInfo info = Instructions::instr_map.at(opcode);
+    execute(info);
     PC++;
 
     // TODO: Something with cycles
-    return instr.cycles;
+    return info.cycles;
 }
 
 #include "disassembler.h"
@@ -595,7 +292,7 @@ int main(int argc, char **argv) {
     std::shared_ptr<Memory> mem = std::make_shared<Memory>(Memory());
     // mem->write_byte(0x10+1, -0x4);
     CPU6502 cpu(mem);
-    std::cout << cpu.Addr_REL() << std::endl;
+    // std::cout << cpu.Addr_REL() << std::endl;
     std::cout << "0x" << std::hex << (unsigned) cpu.to_bcd(0) << std::dec << std::endl;
     std::cout << "0x" << std::hex << (unsigned) cpu.to_bcd(15) << std::dec << std::endl;
     std::cout << "0x" << std::hex << (unsigned) cpu.to_bcd(49) << std::dec << std::endl;

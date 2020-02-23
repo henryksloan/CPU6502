@@ -26,7 +26,11 @@ class Memory {
         return mem[addr] + (mem[addr+1] << 8);
     }
 
-    inline void load_file(std::ifstream &file, std::istream::pos_type in_start, std::istream::pos_type in_end, uint16_t mem_start) {
+    inline uint8_t &ref_byte(uint16_t addr) {
+         return mem.at(addr); // [addr];
+    }
+
+    void load_file(std::ifstream &file, std::istream::pos_type in_start, std::istream::pos_type in_end, uint16_t mem_start) {
         file.seekg(in_start, file.beg);
         int head = in_start;
         int i = mem_start;
@@ -46,7 +50,7 @@ class Memory {
 
     void print() {
         for (auto& b : mem) {
-            std::cout << std::hex << std::setfill('0') << std::setw(2) << (int) b << " ";
+            std::cout << std::hex << std::setfill('0') << std::setw(2) << (int) b;// << " ";
         }
         std::cout << "\n";
     }
