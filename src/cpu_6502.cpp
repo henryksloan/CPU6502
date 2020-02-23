@@ -3,8 +3,22 @@
 
 CPU6502::CPU6502(std::shared_ptr<Memory> mem)
         : mem{std::move(mem)},
-          A{0}, X{0}, Y{0}, P{0}, S{0},
-          PC{0x600} {
+          A{0}, X{0}, Y{0}, P{0}, S{0xff},
+          PC{0x600}, offset(0) {
+    mode_funcs["ACC"] = bind_mode(&CPU6502::Addr_ACC);
+    mode_funcs["IMM"] = bind_mode(&CPU6502::Addr_IMM);
+    mode_funcs["ABS"] = bind_mode(&CPU6502::Addr_ABS);
+    mode_funcs["ZER"] = bind_mode(&CPU6502::Addr_ZER);
+    mode_funcs["ZEX"] = bind_mode(&CPU6502::Addr_ZEX);
+    mode_funcs["ZEY"] = bind_mode(&CPU6502::Addr_ZEY);
+    mode_funcs["ABX"] = bind_mode(&CPU6502::Addr_ABX);
+    mode_funcs["ABY"] = bind_mode(&CPU6502::Addr_ABY);
+    mode_funcs["IMP"] = bind_mode(&CPU6502::Addr_IMP);
+    mode_funcs["REL"] = bind_mode(&CPU6502::Addr_REL);
+    mode_funcs["INX"] = bind_mode(&CPU6502::Addr_INX);
+    mode_funcs["INY"] = bind_mode(&CPU6502::Addr_INY);
+    mode_funcs["ABI"] = bind_mode(&CPU6502::Addr_ABI);
+
     // TODO: See which of these bind_ops can be replaced
     instr_funcs["ADC"] = bind_op(&CPU6502::Op_ADC);
     instr_funcs["AND"] = bit_op(std::bit_and<uint8_t>());
@@ -72,24 +86,27 @@ std::function<void(uint8_t&)> CPU6502::bit_op(std::function<uint8_t(uint8_t,uint
     };
 }
 
-std::function<void(uint8_t&)> CPU6502::branch_op(uint8_t &flag, bool value) {
-    return [this, &flag, value](uint8_t &data) {
+std::function<void(uint8_t&)> CPU6502::branch_op(uint8_t flag, bool value) {
+    return [this, flag, value](uint8_t &data) {
         unsigned char curr = get_flag(flag);
-        if ((!value && curr) || (value && !curr)) {
-            PC = data;
+        if ((!value && !curr) || (value && curr)) {
+            PC = (uint16_t&) data + offset;
         }
     };
 }
 
-std::function<void(uint8_t&)> CPU6502::set_op(uint8_t &flag, bool value) {
-    return [this, &flag, value](uint8_t &data) {
+std::function<void(uint8_t&)> CPU6502::set_op(uint8_t flag, bool value) {
+    return [this, flag, value](uint8_t &data) {
         set_flag(flag, value);
     };
 }
 
-std::function<void(uint8_t&)> CPU6502::compare_op(uint8_t &var) {
-    return [this, var](uint8_t &data) {
-        // TODO
+std::function<void(uint8_t&)> CPU6502::compare_op(uint8_t &reg) {
+    return [this, &reg](uint8_t &data) {
+        int temp = reg - data;
+        set_flag(NEGATIVE, temp & 0x80);
+        set_flag(ZERO, temp == 0);
+        set_flag(CARRY, temp > 0xff);
     };
 }
 
@@ -118,11 +135,11 @@ std::function<void(uint8_t&)> CPU6502::load_op(uint8_t &reg) {
     };
 }
 
-std::function<void(uint8_t&)> CPU6502::store_op(uint8_t reg) {
+std::function<void(uint8_t&)> CPU6502::store_op(uint8_t &reg) {
     return [this, &reg](uint8_t &data) { data = reg; };
 }
 
-std::function<void(uint8_t&)> CPU6502::push_op(uint8_t reg) {
+std::function<void(uint8_t&)> CPU6502::push_op(uint8_t &reg) {
     return [this, &reg](uint8_t &data) { stack_push(reg); };
 }
 
@@ -144,17 +161,17 @@ std::function<void(uint8_t&)> CPU6502::transfer_op(uint8_t reg_a, uint8_t &reg_b
  */
 uint8_t &CPU6502::Addr_ACC() { return A; } // Not implemented
 uint8_t &CPU6502::Addr_IMM() { return mem->ref_byte(++PC); }
-uint8_t &CPU6502::Addr_ABS() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); }
+uint8_t &CPU6502::Addr_ABS() { offset = 0; int temp = PC; PC += 2; return mem->ref_byte(temp+1); }
 uint8_t &CPU6502::Addr_ZER() { return mem->ref_byte(mem->read_byte(++PC)); }
 uint8_t &CPU6502::Addr_ZEX() { return mem->ref_byte(mem->read_byte(++PC) + X); } // TODO Fix looping around
 uint8_t &CPU6502::Addr_ZEY() { return mem->ref_byte(mem->read_byte(++PC) + Y); } // TODO Fix looping around
 uint8_t &CPU6502::Addr_ABX() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + X); } // TODO Fix looping around
 uint8_t &CPU6502::Addr_ABY() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + Y); } // TODO Fix looping around
 uint8_t &CPU6502::Addr_IMP() { return mem->ref_byte(0); } // Dummy implementation by DavidBuchanan314
-uint8_t &CPU6502::Addr_REL() { int temp = PC; PC++; return mem->ref_byte(temp + (int8_t) mem->read_byte(temp+1)); }
+uint8_t &CPU6502::Addr_REL() { int temp = PC; PC++; offset=(int8_t) mem->read_byte(temp+1); return (uint8_t&) PC; }
 uint8_t &CPU6502::Addr_INX() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(mem->read_byte(temp+1) + (int8_t) X)); } // TODO Fix looping around
 uint8_t &CPU6502::Addr_INY() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(mem->read_byte(temp+1)) + (int8_t) Y); } // TODO Fix looping around
-uint8_t &CPU6502::Addr_ABI() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); } // TODO: Check this; should it just return the indirect?
+uint8_t &CPU6502::Addr_ABI() { offset=0; int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); } // TODO: Check this; should it just return the indirect?
 
 void CPU6502::Op_ADC(uint8_t &data) {
     // TODO: Fix various behaviors
@@ -196,12 +213,12 @@ void CPU6502::Op_BRK(uint8_t &data) {
 }
 
 void CPU6502::Op_JMP(uint8_t &data) {
-    PC = (uint16_t&) data; // TODO: ??
+    PC = ((uint16_t&) data+offset); // TODO: ??
 }
 
 void CPU6502::Op_JSR(uint8_t &data) {
     stack_push_word(PC);
-    PC = (uint16_t&) data; // TODO: ??
+    PC = ((uint16_t&) data+offset-1); // TODO: ??
 }
 
 void CPU6502::Op_LSR(uint8_t &data) {
@@ -235,7 +252,7 @@ void CPU6502::Op_RTI(uint8_t &data) {
 }
 
 void CPU6502::Op_RTS(uint8_t &data) {
-    PC = stack_pop_word() + 1;
+    PC = stack_pop_word();
 }
 
 void CPU6502::Op_SBC(uint8_t &data) {
@@ -262,15 +279,13 @@ void CPU6502::Op_SBC(uint8_t &data) {
 #include <iostream> // TODO: Remove
 int CPU6502::step() {
     uint8_t opcode = mem->read_byte(PC);
-    // std::cout << std::hex << (int) PC << " " << (int) opcode << '\n';
-    std::cout << std::hex << (int) opcode << " ";
     // if (opcode == 0x00) return 0; // TEMP
-    const Instr instr = instr_table[opcode];
-    execute_instr(instr);
+    InstrInfo info = Instructions::instr_map.at(opcode);
+    execute(info);
     PC++;
 
     // TODO: Something with cycles
-    return instr.cycles;
+    return info.cycles;
 }
 
 #include "disassembler.h"
@@ -278,7 +293,7 @@ int main(int argc, char **argv) {
     std::shared_ptr<Memory> mem = std::make_shared<Memory>(Memory());
     // mem->write_byte(0x10+1, -0x4);
     CPU6502 cpu(mem);
-    std::cout << cpu.Addr_REL() << std::endl;
+    // std::cout << cpu.Addr_REL() << std::endl;
     std::cout << "0x" << std::hex << (unsigned) cpu.to_bcd(0) << std::dec << std::endl;
     std::cout << "0x" << std::hex << (unsigned) cpu.to_bcd(15) << std::dec << std::endl;
     std::cout << "0x" << std::hex << (unsigned) cpu.to_bcd(49) << std::dec << std::endl;

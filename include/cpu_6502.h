@@ -7,6 +7,7 @@
 #include <string>
 #include <stdexcept>
 
+#include "instruction.h"
 #include "memory.h"
 
 // Flag masks from github.com/gianlucag/mos6502
@@ -36,6 +37,7 @@ class CPU6502 {
 
     // 16-bit program counter
     uint16_t PC;
+    uint16_t offset;
 
     std::shared_ptr<Memory> mem;
 
@@ -67,29 +69,33 @@ class CPU6502 {
     void Op_SBC(uint8_t&);
 
     std::map<std::string, std::function<void(uint8_t&)>> instr_funcs;
+    std::map<std::string, std::function<uint8_t&(void)>> mode_funcs;
 
     inline std::function<void(uint8_t&)> bind_op(void (CPU6502::*op_f)(uint8_t&)) {
         return std::bind(op_f, this, std::placeholders::_1);
     }
 
+    inline std::function<uint8_t&(void)> bind_mode(uint8_t &(CPU6502::*mode_f)(void)) {
+        return std::bind(mode_f, this);
+    }
+
     inline std::function<void(uint8_t&)> bit_op(std::function<uint8_t(uint8_t,uint8_t)> f);
-    inline std::function<void(uint8_t&)> branch_op(uint8_t &flag, bool value=true);
-    inline std::function<void(uint8_t&)> set_op(uint8_t &flag, bool value=true);
-    inline std::function<void(uint8_t&)> compare_op(uint8_t &var);
+    inline std::function<void(uint8_t&)> branch_op(uint8_t flag, bool value=true);
+    inline std::function<void(uint8_t&)> set_op(uint8_t flag, bool value=true);
+    inline std::function<void(uint8_t&)> compare_op(uint8_t &reg);
     inline std::function<void(uint8_t&)> step_op(bool decrement=false);
     inline std::function<void(uint8_t&)> step_reg_op(uint8_t &reg, bool decrement=false);
     inline std::function<void(uint8_t&)> load_op(uint8_t &reg);
-    inline std::function<void(uint8_t&)> store_op(uint8_t reg);
-    inline std::function<void(uint8_t&)> push_op(uint8_t reg);
+    inline std::function<void(uint8_t&)> store_op(uint8_t &reg);
+    inline std::function<void(uint8_t&)> push_op(uint8_t &reg);
     inline std::function<void(uint8_t&)> pop_op(uint8_t &reg);
     inline std::function<void(uint8_t&)> transfer_op(uint8_t reg_a, uint8_t &reg_b); // a -> b
 
-    inline void execute_instr(const Instr instr) {
+    inline void execute(InstrInfo info) {
         // TODO: Do something with cycles
-        int temp = PC;
-        uint16_t src = instr.addr();
-        std::cout << std::hex << (int) temp << ": " << " " << (int) src << '\n';
-        instr.run(src);
+        uint8_t &mode = mode_funcs[info.mode_str]();
+        std::cout << info.mode_str << " data: " << std::hex << (int) mode << std::endl;
+        instr_funcs[info.op_str](mode);
     }
 
     int step();
@@ -121,23 +127,23 @@ class CPU6502 {
 
     inline void stack_push(uint8_t data) {
         mem->write_byte(S, data);
-        S++;
+        S--;
     }
 
     inline void stack_push_word(uint16_t data) {
         mem->write_word(S, data);
-        S += 2;
+        S -= 2;
     }
 
     inline uint8_t stack_pop() {
+        S++;
         uint8_t temp = mem->read_byte(S);
-        S--;
         return temp;
     }
 
     inline uint16_t stack_pop_word() {
+        S += 2;
         uint16_t temp = mem->read_word(S);
-        S -= 2;
         return temp;
     }
 };
