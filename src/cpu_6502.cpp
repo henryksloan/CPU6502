@@ -1,5 +1,4 @@
 #include "cpu_6502.h"
-#include "memory.h"
 
 CPU6502::CPU6502(std::shared_ptr<Memory> mem)
         : mem{std::move(mem)},

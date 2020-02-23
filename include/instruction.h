@@ -7,8 +7,8 @@
 #include <vector>
 
 typedef struct AddrMode {
-    const std::string format;
     short length;
+    const std::string format;
 } AddrMode;
 
 typedef struct InstrMode {

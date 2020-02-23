@@ -48,7 +48,7 @@ Instructions::instr_map_t Instructions::generate_instr_map() {
                            {0xBD, "ABX", 4}, {0xB9, "ABY", 4}, {0xA1, "INX", 6}, {0xB1, "INY", 5}});
     add_instr(map, "LDX", {{0xA2, "IMM", 2}, {0xA6, "ZER", 3}, {0xB6, "ZEX", 4},
                            {0xAE, "ABS", 4}, {0xBE, "ABX", 4}});
-    add_instr(map, "LDY", {{0xA2, "IMM", 2}, {0xA4, "ZER", 3}, {0xB4, "ZEX", 4},
+    add_instr(map, "LDY", {{0xA0, "IMM", 2}, {0xA4, "ZER", 3}, {0xB4, "ZEX", 4},
                            {0xAC, "ABS", 4}, {0xBC, "ABX", 4}});
     add_instr(map, "LSR", {{0x4A, "ACC", 2}, {0x46, "ZER", 5}, {0x56, "ZEX", 6},
                            {0x4E, "ABS", 6}, {0x5E, "ABX", 7}});
@@ -84,4 +84,19 @@ Instructions::instr_map_t Instructions::generate_instr_map() {
     return map;
 }
 
-const std::unordered_map<uint8_t, InstrInfo> Instructions::instr_map = generate_instr_map();
+const Instructions::instr_map_t Instructions::instr_map = generate_instr_map();
+const std::unordered_map<std::string, AddrMode> Instructions::mode_map = {
+    {"ACC", {0, "A"}},
+    {"IMM", {1, "#$b"}},
+    {"ABS", {2, "$w"}},
+    {"ZER", {1, "$b"}},
+    {"ZEX", {1, "$b,X"}},
+    {"ZEY", {1, "$b,Y"}},
+    {"ABX", {2, "$w,X"}},
+    {"ABY", {2, "$w,Y"}},
+    {"IMP", {0, ""}},
+    {"REL", {1, "$w"}},
+    {"INX", {1, "($b,X)"}},
+    {"INY", {1, "($b),Y"}},
+    {"ABI", {2, "($w)"}}
+};

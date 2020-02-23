@@ -94,7 +94,6 @@ class CPU6502 {
     inline void execute(InstrInfo info) {
         // TODO: Do something with cycles
         uint8_t &mode = mode_funcs[info.mode_str]();
-        std::cout << info.mode_str << " data: " << std::hex << (int) mode << std::endl;
         instr_funcs[info.op_str](mode);
     }
 
