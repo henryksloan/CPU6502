@@ -134,11 +134,11 @@ std::function<void(uint8_t&)> CPU6502::load_op(uint8_t &reg) {
     };
 }
 
-std::function<void(uint8_t&)> CPU6502::store_op(uint8_t &reg) {
+std::function<void(uint8_t&)> CPU6502::store_op(const uint8_t &reg) {
     return [this, &reg](uint8_t &data) { data = reg; };
 }
 
-std::function<void(uint8_t&)> CPU6502::push_op(uint8_t &reg) {
+std::function<void(uint8_t&)> CPU6502::push_op(const uint8_t &reg) {
     return [this, &reg](uint8_t &data) { stack_push(reg); };
 }
 
@@ -146,7 +146,7 @@ std::function<void(uint8_t&)> CPU6502::pop_op(uint8_t &reg) {
     return [this, &reg](uint8_t &data) { reg = stack_pop(); };
 }
 
-std::function<void(uint8_t&)> CPU6502::transfer_op(uint8_t reg_a, uint8_t &reg_b) {
+std::function<void(uint8_t&)> CPU6502::transfer_op(const uint8_t &reg_a, uint8_t &reg_b) {
     return [this, &reg_a, &reg_b](uint8_t &data) {
         reg_b = reg_a;
         set_flag(NEGATIVE, reg_b & 0x80);
@@ -278,7 +278,6 @@ void CPU6502::Op_SBC(uint8_t &data) {
 #include <iostream> // TODO: Remove
 int CPU6502::step() {
     uint8_t opcode = mem->read_byte(PC);
-    // if (opcode == 0x00) return 0; // TEMP
     InstrInfo info = Instructions::instr_map.at(opcode);
     execute(info);
     PC++;
@@ -288,7 +287,9 @@ int CPU6502::step() {
 }
 
 #include "disassembler.h"
-int main(int argc, char **argv) {
+#include <ctime>
+#include <cstdlib>
+ int main(int argc, char **argv) {
     std::shared_ptr<Memory> mem = std::make_shared<Memory>(Memory());
     // mem->write_byte(0x10+1, -0x4);
     CPU6502 cpu(mem);
@@ -314,15 +315,26 @@ int main(int argc, char **argv) {
     file.seekg (0, file.end);
     int length = file.tellg();
     file.seekg (0, file.beg);
-    mem->load_file(file, 0, length, 0x600);
+    mem->load_file(file, 0, length-1, 0x600);
     mem->print();
     file.clear();
     file.seekg(0, file.beg);
     dis.file_to_strings(file);
-    for (int i = 0; i < 100; i++) cpu.step();
+
+    std::srand(std::time(nullptr));
+    for (int i = 0; i < 200; i++) {
+        mem->write_byte(0xfe, std::rand()%0x100);
+        cpu.step();
+    }
+    // mem->print();
+    std::cout << "\n";
+
     /* for (auto s : dis.instructions) {
         std::cout << s << std::endl;
     } */
+    for (int i = 0x200; i < 0x600; i++) {
+        std::cout << std::hex << std::setfill('0') << std::setw(2) << (int) mem->read_byte(i);// << " ";
+    }
 
     return 0;
 }
