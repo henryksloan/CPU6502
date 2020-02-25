@@ -13,7 +13,7 @@ std::string Disassembler::instr_to_string(InstrInfo info, uint16_t PC, uint16_t 
     std::string format = Instructions::mode_map.at(info.mode_str).format;
     size_t len = format.length();
     if (len != 0) instr_ss << " ";
-    for (int i = 0; i < len; i++) {
+    for (unsigned i = 0; i < len; i++) {
         switch (format[i]) {
             case 'b':
                 instr_ss << std::setw(2) << src;
