@@ -137,8 +137,8 @@ class CPU6502 {
     }
 
     inline void stack_push_word(uint16_t data) {
-        mem->write_word(0x100+S, data);
-        S -= 2;
+        stack_push((data >> 8) & 0xFF);
+        stack_push(data & 0xFF);
     }
 
     inline uint8_t stack_pop() {
@@ -148,9 +148,7 @@ class CPU6502 {
     }
 
     inline uint16_t stack_pop_word() {
-        S += 2;
-        uint16_t temp = mem->read_word(0x100+S);
-        return temp;
+        return stack_pop() | (stack_pop() << 8);
     }
 };
 
