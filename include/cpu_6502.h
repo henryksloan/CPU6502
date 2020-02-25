@@ -26,6 +26,8 @@ class CPU6502 {
 
  // TODO: Uncomment
  // private:
+    std::shared_ptr<Memory> mem;
+
     /*
      * 8-bit registers
      * A: Accumulator
@@ -38,8 +40,6 @@ class CPU6502 {
     // 16-bit program counter
     uint16_t PC;
     uint16_t offset;
-
-    std::shared_ptr<Memory> mem;
 
     uint8_t &Addr_ACC(); // Accumulator
     uint8_t &Addr_IMM(); // Immediate
