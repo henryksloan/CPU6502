@@ -2,7 +2,7 @@
 
 CPU6502::CPU6502(std::shared_ptr<Memory> mem)
         : mem{std::move(mem)},
-          A{0}, X{0}, Y{0}, P{0}, S{0xff},
+          A{0}, X{0}, Y{0}, P{0x20}, S{0xff},
           PC{0x600}, offset(0) {
     mode_funcs["ACC"] = bind_mode(&CPU6502::Addr_ACC);
     mode_funcs["IMM"] = bind_mode(&CPU6502::Addr_IMM);
@@ -79,9 +79,9 @@ CPU6502::CPU6502(std::shared_ptr<Memory> mem)
 
 std::function<void(uint8_t&)> CPU6502::bit_op(std::function<uint8_t(uint8_t,uint8_t)> f) {
     return [this, f](uint8_t &data) {
-        data = f(A, data);
-        set_flag(ZERO, data == 0);
-        set_flag(NEGATIVE, data & 0x80);
+        A = f(A, data);
+        set_flag(ZERO, A == 0);
+        set_flag(NEGATIVE, A & 0x80);
     };
 }
 
@@ -134,11 +134,11 @@ std::function<void(uint8_t&)> CPU6502::load_op(uint8_t &reg) {
     };
 }
 
-std::function<void(uint8_t&)> CPU6502::store_op(uint8_t &reg) {
+std::function<void(uint8_t&)> CPU6502::store_op(const uint8_t &reg) {
     return [this, &reg](uint8_t &data) { data = reg; };
 }
 
-std::function<void(uint8_t&)> CPU6502::push_op(uint8_t &reg) {
+std::function<void(uint8_t&)> CPU6502::push_op(const uint8_t &reg) {
     return [this, &reg](uint8_t &data) { stack_push(reg); };
 }
 
@@ -146,7 +146,7 @@ std::function<void(uint8_t&)> CPU6502::pop_op(uint8_t &reg) {
     return [this, &reg](uint8_t &data) { reg = stack_pop(); };
 }
 
-std::function<void(uint8_t&)> CPU6502::transfer_op(uint8_t reg_a, uint8_t &reg_b) {
+std::function<void(uint8_t&)> CPU6502::transfer_op(const uint8_t &reg_a, uint8_t &reg_b) {
     return [this, &reg_a, &reg_b](uint8_t &data) {
         reg_b = reg_a;
         set_flag(NEGATIVE, reg_b & 0x80);
@@ -168,8 +168,8 @@ uint8_t &CPU6502::Addr_ABX() { int temp = PC; PC += 2; return mem->ref_byte(mem-
 uint8_t &CPU6502::Addr_ABY() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + Y); } // TODO Fix looping around
 uint8_t &CPU6502::Addr_IMP() { return mem->ref_byte(0); } // Dummy implementation by DavidBuchanan314
 uint8_t &CPU6502::Addr_REL() { int temp = PC; PC++; offset=(int8_t) mem->read_byte(temp+1); return (uint8_t&) PC; }
-uint8_t &CPU6502::Addr_INX() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(mem->read_byte(temp+1) + (int8_t) X)); } // TODO Fix looping around
-uint8_t &CPU6502::Addr_INY() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(mem->read_byte(temp+1)) + (int8_t) Y); } // TODO Fix looping around
+uint8_t &CPU6502::Addr_INX() { return mem->ref_byte(mem->read_word(mem->read_byte(++PC) + (int8_t) X)); } // TODO Fix looping around
+uint8_t &CPU6502::Addr_INY() { std::cout << std::hex << "arg = " << (int) mem->read_byte(PC+1) << " got = " << (int) mem->read_word(mem->read_byte(PC+1)) << " Y = " << (int) Y << " sum = " << (int) mem->read_word(mem->read_byte(PC+1)) + (int8_t) Y << std::endl; return mem->ref_byte(mem->read_word(mem->read_byte(++PC)) + (int8_t) Y); } // TODO Fix looping around
 uint8_t &CPU6502::Addr_ABI() { offset=0; int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); } // TODO: Check this; should it just return the indirect?
 
 void CPU6502::Op_ADC(uint8_t &data) {
@@ -202,17 +202,18 @@ void CPU6502::Op_ASL(uint8_t &data) {
 
 void CPU6502::Op_BIT(uint8_t &data) {
     P &= (data & 0xC0) | 0x3F;
-    set_flag(ZERO, data & A);
+    set_flag(ZERO, (data & A) == 0);
 }
 
 void CPU6502::Op_BRK(uint8_t &data) {
     set_flag(INTERRUPT, 1);
     stack_push_word(PC+2);
-    stack_push(P);
+    stack_push(P | BREAK);
+    set_flag(INTERRUPT, true);
 }
 
 void CPU6502::Op_JMP(uint8_t &data) {
-    PC = ((uint16_t&) data+offset); // TODO: ??
+    PC = ((uint16_t&) data+offset-1); // TODO: ??
 }
 
 void CPU6502::Op_JSR(uint8_t &data) {
@@ -278,7 +279,6 @@ void CPU6502::Op_SBC(uint8_t &data) {
 #include <iostream> // TODO: Remove
 int CPU6502::step() {
     uint8_t opcode = mem->read_byte(PC);
-    // if (opcode == 0x00) return 0; // TEMP
     InstrInfo info = Instructions::instr_map.at(opcode);
     execute(info);
     PC++;
@@ -289,6 +289,10 @@ int CPU6502::step() {
 
 <<<<<<< Updated upstream
 #include "disassembler.h"
+#include <ctime>
+#include <cstdlib>
+#include <chrono>
+#include <thread>
 int main(int argc, char **argv) {
     std::shared_ptr<Memory> mem = std::make_shared<Memory>(Memory());
     // mem->write_byte(0x10+1, -0x4);
@@ -315,15 +319,127 @@ int main(int argc, char **argv) {
     file.seekg (0, file.end);
     int length = file.tellg();
     file.seekg (0, file.beg);
-    mem->load_file(file, 0, length, 0x600);
-    mem->print();
+    mem->load_file(file, 0, length-1, 0x600);
+    // mem->print();
     file.clear();
     file.seekg(0, file.beg);
     dis.file_to_strings(file);
-    for (int i = 0; i < 100; i++) cpu.step();
+
+    // $0: Black
+    // $1: White
+    // $2: Red
+    // $3: Cyan
+    // $4: Purple
+    // $5: Green
+    // $6: Blue
+    // $7: Yellow
+    // $8: Orange
+    // $9: Brown
+    // $a: Light red
+    // $b: Dark grey
+    // $c: Grey
+    // $d: Light green
+    // $e: Light blue
+    // $f: Light grey
+    std::unordered_map<int, std::string> col {
+        {0x0, "40"},
+        {0x1, "1;47"},
+        {0x2, "41"},
+        {0x3, "46"},
+        {0x4, "45"},
+        {0x5, "42"},
+        {0x6, "44"},
+        {0x7, "43"},
+        {0x8, ""},
+        {0x9, ""},
+        {0xa, "1;41"},
+        {0xb, "1;40"},
+        {0xc, "47"},
+        {0xd, "1;42"},
+        {0xe, "1;44"},
+        {0xf, "47"}
+    };
+    // for (int i = 0x200; i < 0x600; i++) {
+    //     std::cout << "\033[" << col[mem->read_byte(i)] << "m*\033[0m";// << " ";
+    // }
+    for (int i = 0x200; i < 0x600; i += 0x20) {
+        for (int j = i; j < i+0x20; j++) {
+            std::cout << "\033[" << col[mem->read_byte(j)] << "m*\033[0m";// << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    std::srand(std::time(nullptr));
+    /*for (int i = 0; i < 10000; i++) {
+        std::clock_t c_start = std::clock();
+        auto t_start = std::chrono::high_resolution_clock::now();
+        mem->write_byte(0xfe, std::rand()%0x100);
+        cpu.step();
+        std::clock_t c_end = std::clock();
+        auto t_end = std::chrono::high_resolution_clock::now();
+        int a = (1000/60) - std::chrono::duration<double, std::milli>(t_end-t_start).count();
+        for (int i = 0x200; i < 0x600; i += 0x20) {
+            for (int j = i; j < i+0x20; j++) {
+                std::cout << "\033[" << col[mem->read_byte(j)&0xF] << "m*\033[0m";// << " ";
+            }
+            std::cout << std::endl;
+        }
+        for (int i = 0x0; i < 0xff; i++) {
+            std::cout << std::hex << std::setfill('0') << std::setw(2) << (int) mem->read_byte(i);// << " ";
+        }
+        getchar();
+    }*/
+
+    for (int i = 0; i < 100000; i++) {
+        std::cout << "\033[2J\033[1;1H";
+        std::clock_t c_start = std::clock();
+        auto t_start = std::chrono::high_resolution_clock::now();
+        mem->write_byte(0xfe, std::rand()%0x100);
+        if (i%100==0) {
+            switch (std::rand()%4) {
+                case 0:
+                    mem->write_byte(0xff, 0x77);
+                    break;
+                case 1:
+                    mem->write_byte(0xff, 0x64);
+                    break;
+                case 2:
+                    mem->write_byte(0xff, 0x73);
+                    break;
+                case 3:
+                    mem->write_byte(0xff, 0x61);
+                    break;
+            }
+        }
+        cpu.step();
+        for (int i = 0x200; i < 0x600; i += 0x20) {
+            for (int j = i; j < i+0x20; j++) {
+                std::cout << "\033[" << col[mem->read_byte(j)&0xf] << "m*\033[0m";// << " ";
+            }
+            std::cout << std::endl;
+        }
+        std::clock_t c_end = std::clock();
+        auto t_end = std::chrono::high_resolution_clock::now();
+        int a = (1000/120) - std::chrono::duration<double, std::milli>(t_end-t_start).count();
+        std::this_thread::sleep_for(std::chrono::milliseconds((a < 0) ? 0 : a));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(4));
+    }
+
+    // mem->print();
+    std::cout << "\n";
+    for (int i = 0x200; i < 0x600; i += 0x20) {
+        for (int j = i; j < i+0x20; j++) {
+            std::cout << "\033[" << col[mem->read_byte(j)] << "m*\033[0m";// << " ";
+        }
+        std::cout << std::endl;
+    }
     /* for (auto s : dis.instructions) {
         std::cout << s << std::endl;
     } */
+    // for (int i = 0x200; i < 0x600; i++) {
+    //     std::cout << std::hex << std::setfill('0') << std::setw(2) << (int) mem->read_byte(i);// << " ";
+    // }
+    // std::cout << std::endl;
 
     return 0;
 }

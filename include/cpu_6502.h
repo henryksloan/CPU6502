@@ -86,15 +86,22 @@ class CPU6502 {
     inline std::function<void(uint8_t&)> step_op(bool decrement=false);
     inline std::function<void(uint8_t&)> step_reg_op(uint8_t &reg, bool decrement=false);
     inline std::function<void(uint8_t&)> load_op(uint8_t &reg);
-    inline std::function<void(uint8_t&)> store_op(uint8_t &reg);
-    inline std::function<void(uint8_t&)> push_op(uint8_t &reg);
+    inline std::function<void(uint8_t&)> store_op(const uint8_t &reg);
+    inline std::function<void(uint8_t&)> push_op(const uint8_t &reg);
     inline std::function<void(uint8_t&)> pop_op(uint8_t &reg);
-    inline std::function<void(uint8_t&)> transfer_op(uint8_t reg_a, uint8_t &reg_b); // a -> b
+    inline std::function<void(uint8_t&)> transfer_op(const uint8_t &reg_a, uint8_t &reg_b); // a -> b
 
     inline void execute(InstrInfo info) {
         // TODO: Do something with cycles
-        uint8_t &mode = mode_funcs[info.mode_str]();
-        instr_funcs[info.op_str](mode);
+        int temp = PC; // TODO: Remove temp
+        uint8_t &data = mode_funcs[info.mode_str]();
+        instr_funcs[info.op_str](data);
+        std::cout << (int)temp << " " << info.op_str << " " << info.mode_str << " " << (int) ((uint16_t&) data) << std::endl;;
+        std::cout << "(A, X, Y, P, S, offset) = (" << std::hex << (int) A << ", " << (int) X << ", " << (int) Y << ", " << (int) P << ", " << (int) S << ", " << (int) offset << ")" << std::endl;
+        // std::cout << '[' << std::hex;
+        // for (int i = S; i <= 0xff; i++) std::cout << mem->read_byte(i) << ' ';
+        // std::cout << ']' << std::endl;
+        // std::cout << "S(0xff) " << mem->read_word(0xff) << std::endl;
     }
 
     int step();
@@ -125,25 +132,23 @@ class CPU6502 {
     }
 
     inline void stack_push(uint8_t data) {
-        mem->write_byte(S, data);
+        mem->write_byte(0x100+S, data);
         S--;
     }
 
     inline void stack_push_word(uint16_t data) {
-        mem->write_word(S, data);
-        S -= 2;
+        stack_push((data >> 8) & 0xFF);
+        stack_push(data & 0xFF);
     }
 
     inline uint8_t stack_pop() {
         S++;
-        uint8_t temp = mem->read_byte(S);
+        uint8_t temp = mem->read_byte(0x100+S);
         return temp;
     }
 
     inline uint16_t stack_pop_word() {
-        S += 2;
-        uint16_t temp = mem->read_word(S);
-        return temp;
+        return stack_pop() | (stack_pop() << 8);
     }
 };
 
