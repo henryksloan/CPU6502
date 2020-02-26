@@ -93,15 +93,11 @@ class CPU6502 {
 
     inline void execute(InstrInfo info) {
         // TODO: Do something with cycles
-        int temp = PC; // TODO: Remove temp
+        // int temp = PC; // TODO: Remove temp
         uint8_t &data = mode_funcs[info.mode_str]();
         instr_funcs[info.op_str](data);
-        std::cout << (int)temp << " " << info.op_str << " " << info.mode_str << " " << (int) ((uint16_t&) data) << std::endl;;
-        std::cout << "(A, X, Y, P, S, offset) = (" << std::hex << (int) A << ", " << (int) X << ", " << (int) Y << ", " << (int) P << ", " << (int) S << ", " << (int) offset << ")" << std::endl;
-        // std::cout << '[' << std::hex;
-        // for (int i = S; i <= 0xff; i++) std::cout << mem->read_byte(i) << ' ';
-        // std::cout << ']' << std::endl;
-        // std::cout << "S(0xff) " << mem->read_word(0xff) << std::endl;
+        // std::cout << (int)temp << " " << info.op_str << " " << info.mode_str << " " << (int) ((uint16_t&) data) << std::endl;;
+        // std::cout << "(A, X, Y, P, S, offset) = (" << std::hex << (int) A << ", " << (int) X << ", " << (int) Y << ", " << (int) P << ", " << (int) S << ", " << (int) offset << ")" << std::endl;
     }
 
     int step();
