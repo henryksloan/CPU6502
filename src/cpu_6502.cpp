@@ -1,7 +1,7 @@
 #include "cpu_6502.h"
 
 CPU6502::CPU6502(std::shared_ptr<Memory> mem)
-        : mem{std::move(mem)},
+        : mem{mem},
           A{0}, X{0}, Y{0}, P{0x20}, S{0xff},
           PC{0x600}, offset(0) {
     mode_funcs["ACC"] = bind_mode(&CPU6502::Addr_ACC);
@@ -135,7 +135,7 @@ std::function<void(uint8_t&)> CPU6502::load_op(uint8_t &reg) {
 }
 
 std::function<void(uint8_t&)> CPU6502::store_op(const uint8_t &reg) {
-    return [this, &reg](uint8_t &data) { data = reg; };
+    return [&reg](uint8_t &data) { data = reg; };
 }
 
 std::function<void(uint8_t&)> CPU6502::push_op(const uint8_t &reg) {
