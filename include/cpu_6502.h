@@ -129,7 +129,8 @@ class CPU6502 {
 
     inline void stack_push(uint8_t data) {
         mem->write_byte(0x100+S, data);
-        S--;
+        if (S == 0x00) S = 0xFF;
+        else S--;
     }
 
     inline void stack_push_word(uint16_t data) {
@@ -138,7 +139,8 @@ class CPU6502 {
     }
 
     inline uint8_t stack_pop() {
-        S++;
+        if (S == 0xFF) S = 0x00;
+        else S++;
         uint8_t temp = mem->read_byte(0x100+S);
         return temp;
     }
