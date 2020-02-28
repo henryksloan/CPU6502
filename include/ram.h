@@ -26,7 +26,7 @@ class RAM : public Memory {
     }
 
     virtual inline uint8_t &ref_byte(uint16_t addr) {
-         return mem.at(addr);
+        return mem.at(addr);
     }
 
     virtual void load_file(std::ifstream &file, std::istream::pos_type in_start, std::istream::pos_type in_end, uint16_t mem_start) {
@@ -50,7 +50,7 @@ class RAM : public Memory {
         std::cout << "\n";
     }
 
- private:
+ protected:
     std::array<uint8_t, 0x10000> mem;
 };
 
