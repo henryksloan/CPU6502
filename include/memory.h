@@ -27,7 +27,7 @@ class Memory {
     }
 
     inline uint8_t &ref_byte(uint16_t addr) {
-         return mem.at(addr); // [addr];
+         return mem.at(addr);
     }
 
     void load_file(std::ifstream &file, std::istream::pos_type in_start, std::istream::pos_type in_end, uint16_t mem_start) {
@@ -44,13 +44,9 @@ class Memory {
         }
     }
 
-    /* inline void load_file(std::ifstream &file, uint16_t mem_start) {
-        load_file(file, 0, std::ios::end, mem_start);
-    } */
-
     void print() {
         for (auto& b : mem) {
-            std::cout << std::hex << std::setfill('0') << std::setw(2) << (int) b;// << " ";
+            std::cout << std::hex << std::setfill('0') << std::setw(2) << (int) b;
         }
         std::cout << "\n";
     }

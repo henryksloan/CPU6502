@@ -77,6 +77,7 @@ CPU6502::CPU6502(std::shared_ptr<Memory> mem)
     instr_funcs["TYA"] = transfer_op(Y, A);
 }
 
+// Returns the result of a binary logic operation (e.g. AND) between A and memory
 std::function<void(uint8_t&)> CPU6502::bit_op(std::function<uint8_t(uint8_t,uint8_t)> f) {
     return [this, f](uint8_t &data) {
         A = f(A, data);
@@ -85,6 +86,7 @@ std::function<void(uint8_t&)> CPU6502::bit_op(std::function<uint8_t(uint8_t,uint
     };
 }
 
+// Branch if value
 std::function<void(uint8_t&)> CPU6502::branch_op(uint8_t flag, bool value) {
     return [this, flag, value](uint8_t &data) {
         unsigned char curr = get_flag(flag);
@@ -94,12 +96,14 @@ std::function<void(uint8_t&)> CPU6502::branch_op(uint8_t flag, bool value) {
     };
 }
 
+// Set a flag to a predefined value
 std::function<void(uint8_t&)> CPU6502::set_op(uint8_t flag, bool value) {
     return [this, flag, value](uint8_t &data) {
         set_flag(flag, value);
     };
 }
 
+// Compare a register to memory, then set flags
 std::function<void(uint8_t&)> CPU6502::compare_op(uint8_t &reg) {
     return [this, &reg](uint8_t &data) {
         int temp = reg - data;
@@ -109,6 +113,7 @@ std::function<void(uint8_t&)> CPU6502::compare_op(uint8_t &reg) {
     };
 }
 
+// Either increment or decrement data
 std::function<void(uint8_t&)> CPU6502::step_op(bool decrement) {
     return [this, decrement](uint8_t &data) {
         if (decrement) {
@@ -122,6 +127,7 @@ std::function<void(uint8_t&)> CPU6502::step_op(bool decrement) {
     };
 }
 
+// Increment or decrement a register
 std::function<void(uint8_t&)> CPU6502::step_reg_op(uint8_t &reg, bool decrement) {
     return [this, &reg, decrement](uint8_t&) { step_op(decrement)(reg); };
 }
@@ -154,24 +160,21 @@ std::function<void(uint8_t&)> CPU6502::transfer_op(const uint8_t &reg_a, uint8_t
     };
 }
 
-/*
- * Addressing modes
- * TODO: Document reference behavior
- */
-uint8_t &CPU6502::Addr_ACC() { return A; } // Not implemented
+uint8_t &CPU6502::Addr_ACC() { return A; }
 uint8_t &CPU6502::Addr_IMM() { return mem->ref_byte(++PC); }
 uint8_t &CPU6502::Addr_ABS() { offset = 0; int temp = PC; PC += 2; return mem->ref_byte(temp+1); }
 uint8_t &CPU6502::Addr_ZER() { return mem->ref_byte(mem->read_byte(++PC)); }
-uint8_t &CPU6502::Addr_ZEX() { return mem->ref_byte(mem->read_byte(++PC) + X); } // TODO Fix looping around
-uint8_t &CPU6502::Addr_ZEY() { return mem->ref_byte(mem->read_byte(++PC) + Y); } // TODO Fix looping around
-uint8_t &CPU6502::Addr_ABX() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + X); } // TODO Fix looping around
-uint8_t &CPU6502::Addr_ABY() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + Y); } // TODO Fix looping around
-uint8_t &CPU6502::Addr_IMP() { return mem->ref_byte(0); } // Dummy implementation by DavidBuchanan314
+uint8_t &CPU6502::Addr_ZEX() { return mem->ref_byte(mem->read_byte(++PC) + X); }
+uint8_t &CPU6502::Addr_ZEY() { return mem->ref_byte(mem->read_byte(++PC) + Y); }
+uint8_t &CPU6502::Addr_ABX() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + X); }
+uint8_t &CPU6502::Addr_ABY() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + Y); }
+uint8_t &CPU6502::Addr_IMP() { return mem->ref_byte(0); } // Dummy implementation
 uint8_t &CPU6502::Addr_REL() { int temp = PC; PC++; offset=(int8_t) mem->read_byte(temp+1); return (uint8_t&) PC; }
-uint8_t &CPU6502::Addr_INX() { return mem->ref_byte(mem->read_word(mem->read_byte(++PC) + (int8_t) X)); } // TODO Fix looping around
-uint8_t &CPU6502::Addr_INY() { return mem->ref_byte(mem->read_word(mem->read_byte(++PC)) + (int8_t) Y); } // TODO Fix looping around
-uint8_t &CPU6502::Addr_ABI() { offset=0; int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); } // TODO: Check this; should it just return the indirect?
+uint8_t &CPU6502::Addr_INX() { return mem->ref_byte(mem->read_word(mem->read_byte(++PC) + (int8_t) X)); }
+uint8_t &CPU6502::Addr_INY() { return mem->ref_byte(mem->read_word(mem->read_byte(++PC)) + (int8_t) Y); }
+uint8_t &CPU6502::Addr_ABI() { offset=0; int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); }
 
+// Add memory to accumulator with carry
 void CPU6502::Op_ADC(uint8_t &data) {
     // TODO: Fix various behaviors
     // TODO: Implement overflow
@@ -193,6 +196,8 @@ void CPU6502::Op_ADC(uint8_t &data) {
     }
 }
 
+// Arithmetic shift left, with carry
+// C <- [76543210] <- 0
 void CPU6502::Op_ASL(uint8_t &data) {
     set_flag(CARRY, data & 0x80);
     data = (data << 1) & 0xFE;
@@ -200,11 +205,15 @@ void CPU6502::Op_ASL(uint8_t &data) {
     set_flag(ZERO, data == 0);
 }
 
+// Test bits in memory with accumulator
+// 2 most significant bits are transferred from data to P [Flags N and V]
+// Then Flag Z is set according to data & A
 void CPU6502::Op_BIT(uint8_t &data) {
     P &= (data & 0xC0) | 0x3F;
     set_flag(ZERO, (data & A) == 0);
 }
 
+// Force a system interrupt
 void CPU6502::Op_BRK(uint8_t &data) {
     set_flag(INTERRUPT, 1);
     stack_push_word(PC+2);
@@ -212,15 +221,20 @@ void CPU6502::Op_BRK(uint8_t &data) {
     set_flag(INTERRUPT, true);
 }
 
+// Jump PC to a given address
 void CPU6502::Op_JMP(uint8_t &data) {
-    PC = ((uint16_t&) data+offset-1); // TODO: ??
+    PC = ((uint16_t&) data+offset-1);
 }
 
+// Jump PC to a given address, storing the return address
 void CPU6502::Op_JSR(uint8_t &data) {
     stack_push_word(PC);
-    PC = ((uint16_t&) data+offset-1); // TODO: ??
+    PC = ((uint16_t&) data+offset-1);
 }
 
+
+// Shift right with carry
+// 0 -> [76543210] -> C
 void CPU6502::Op_LSR(uint8_t &data) {
     set_flag(CARRY, data & 0x1);
     data = (data >> 1) & 0x7F;
@@ -228,6 +242,8 @@ void CPU6502::Op_LSR(uint8_t &data) {
     set_flag(ZERO, data == 0);
 }
 
+// Rotate left
+// C <- [76543210] <- C
 void CPU6502::Op_ROL(uint8_t &data) {
     unsigned char temp = get_flag(CARRY);
     set_flag(CARRY, data & 0x80);
@@ -237,6 +253,8 @@ void CPU6502::Op_ROL(uint8_t &data) {
     set_flag(ZERO, data == 0);
 }
 
+// Rotate right
+// C -> [76543210] -> C
 void CPU6502::Op_ROR(uint8_t &data) {
     unsigned char temp = get_flag(CARRY);
     set_flag(CARRY, data & 0x1);
@@ -246,15 +264,18 @@ void CPU6502::Op_ROR(uint8_t &data) {
     set_flag(ZERO, data == 0);
 }
 
+// Return from interrupt
 void CPU6502::Op_RTI(uint8_t &data) {
     P = stack_pop();
     PC = stack_pop_word();
 }
 
+// Return from subroutine
 void CPU6502::Op_RTS(uint8_t &data) {
     PC = stack_pop_word();
 }
 
+// Add memory to accumulator with carry
 void CPU6502::Op_SBC(uint8_t &data) {
     // TODO: Fix various behaviors
     // TODO: Implement overflow
@@ -276,7 +297,6 @@ void CPU6502::Op_SBC(uint8_t &data) {
     }
 }
 
-#include <iostream> // TODO: Remove
 int CPU6502::step() {
     uint8_t opcode = mem->read_byte(PC);
     InstrInfo info = Instructions::instr_map.at(opcode);
