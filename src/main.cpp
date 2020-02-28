@@ -4,9 +4,10 @@
 #include <SFML/Graphics.hpp>
 
 #include "cpu_6502.h"
+#include "ram.h"
 
 int main(int argc, char **argv) {
-    std::shared_ptr<Memory> mem = std::make_shared<Memory>(Memory());
+    std::shared_ptr<Memory> mem = std::make_shared<RAM>();
     CPU6502 cpu(mem);
 
     std::ifstream file(argv[1], std::ifstream::binary);
@@ -46,14 +47,14 @@ int main(int argc, char **argv) {
     window.setFramerateLimit(0);
     sf::Event event;
 
-    std::atomic<bool> done = false;
+    std::atomic<bool> done { false };
     std::thread thr([&done, &mem, &cpu] {
         sf::Clock clock;
         while(!done){
             clock.restart();
             mem->write_byte(0xfe, std::rand()%0x100);
             cpu.step();
-            long x = clock.restart().asMicroseconds();
+            // long x = clock.restart().asMicroseconds();
             const int fps = 1600;
             // std::cout << x << " " << 1000.0/fps << std::endl;
             // if (x < 1000.0/fps) std::this_thread::sleep_for(std::chrono::milliseconds((int)(1000.0/fps-x)));
