@@ -24,6 +24,7 @@
 class CPU6502 {
  public:
     CPU6502(std::shared_ptr<Memory> mem);
+    int step();
 
  private:
     std::shared_ptr<Memory> mem;
@@ -107,8 +108,6 @@ class CPU6502 {
         uint8_t &data = mode_funcs[info.mode_str]();
         instr_funcs[info.op_str](data);
     }
-
-    int step();
 
     inline unsigned char get_flag(uint8_t mask) {
         return (P & mask) ? 1 : 0;
