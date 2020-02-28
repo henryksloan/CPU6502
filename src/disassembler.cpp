@@ -45,15 +45,12 @@ void Disassembler::file_to_strings(std::ifstream &file) {
         info = Instructions::instr_map.at(opcode);
         length = Instructions::mode_map.at(info.mode_str).length;
 
-        // std::cout << std::hex << std::setw(2) << std::setfill('0') << (int) opcode << ' ';
         src = 0;
         for (int i = 0; i < length; i++) {
             file.read(&temp, 1);
-            // std::cout << std::hex << std::setw(2) << std::setfill('0') << (int) temp << ' ';
             src |= temp << 8*i;
         }
-        // std::cout << std::hex << std::setw(4) << std::setfill('0') << (int) src << '\n';
-        std::cout << std::hex << std::setfill('0') << std::setw(4) << (int) PC << " " << std::setw(2) << (int) opcode << " " << std::setw(4) << (int) src << " " << instr_to_string(info, PC, src) << std::endl;
+        // std::cout << std::hex << std::setfill('0') << std::setw(4) << (int) PC << " " << std::setw(2) << (int) opcode << " " << std::setw(4) << (int) src << " " << instr_to_string(info, PC, src) << std::endl;
         instructions.push_back(instr_to_string(info, PC, src));
         PC += length + 1;
     }

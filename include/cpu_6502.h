@@ -11,6 +11,7 @@
 #include "memory.h"
 
 // Flag masks from github.com/gianlucag/mos6502
+// Single-bit masks (e.g. 0x40 = 01000000)
 #define NEGATIVE  0x80
 #define OVERFLOW  0x40
 #define CONSTANT  0x20
@@ -24,8 +25,7 @@ class CPU6502 {
  public:
     CPU6502(std::shared_ptr<Memory> mem);
 
- // TODO: Uncomment
- // private:
+ private:
     std::shared_ptr<Memory> mem;
 
     /*
@@ -41,6 +41,8 @@ class CPU6502 {
     uint16_t PC;
     uint16_t offset;
 
+    // Addressing modes return a reference to the appropriate data
+    // Note that all of them return actual data, IMM returns the uint16_t at PC+1
     uint8_t &Addr_ACC(); // Accumulator
     uint8_t &Addr_IMM(); // Immediate
     uint8_t &Addr_ABS(); // Absolute
@@ -55,6 +57,38 @@ class CPU6502 {
     uint8_t &Addr_INY(); // Indirect, Y-indexed
     uint8_t &Addr_ABI(); // Absolute indirect
 
+    // Maps between the names of intructions and modes to their implementations
+    std::map<std::string, std::function<void(uint8_t&)>> instr_funcs;
+    std::map<std::string, std::function<uint8_t&(void)>> mode_funcs;
+
+    /*
+     * These functions abstract similar instructions
+     */
+
+    // Binds a function to the type of an instr_funcs
+    inline std::function<void(uint8_t&)> bind_op(void (CPU6502::*op_f)(uint8_t&)) {
+        return std::bind(op_f, this, std::placeholders::_1);
+    }
+
+    // Binds a mode to the type of mode_funcs
+    inline std::function<uint8_t&(void)> bind_mode(uint8_t &(CPU6502::*mode_f)(void)) {
+        return std::bind(mode_f, this);
+    }
+
+    // Various abstractions of similar instructions
+    inline std::function<void(uint8_t&)> bit_op(std::function<uint8_t(uint8_t,uint8_t)> f);
+    inline std::function<void(uint8_t&)> branch_op(uint8_t flag, bool value=true);
+    inline std::function<void(uint8_t&)> set_op(uint8_t flag, bool value=true);
+    inline std::function<void(uint8_t&)> compare_op(uint8_t &reg);
+    inline std::function<void(uint8_t&)> step_op(bool decrement=false);
+    inline std::function<void(uint8_t&)> step_reg_op(uint8_t &reg, bool decrement=false);
+    inline std::function<void(uint8_t&)> load_op(uint8_t &reg);
+    inline std::function<void(uint8_t&)> store_op(const uint8_t &reg);
+    inline std::function<void(uint8_t&)> push_op(const uint8_t &reg);
+    inline std::function<void(uint8_t&)> pop_op(uint8_t &reg);
+    inline std::function<void(uint8_t&)> transfer_op(const uint8_t &reg_a, uint8_t &reg_b); // a -> b
+
+    // More complex or unique instructions, to be used with bind_op
     void Op_ADC(uint8_t&);
     void Op_ASL(uint8_t&);
     void Op_BIT(uint8_t&);
@@ -68,36 +102,10 @@ class CPU6502 {
     void Op_RTS(uint8_t&);
     void Op_SBC(uint8_t&);
 
-    std::map<std::string, std::function<void(uint8_t&)>> instr_funcs;
-    std::map<std::string, std::function<uint8_t&(void)>> mode_funcs;
-
-    inline std::function<void(uint8_t&)> bind_op(void (CPU6502::*op_f)(uint8_t&)) {
-        return std::bind(op_f, this, std::placeholders::_1);
-    }
-
-    inline std::function<uint8_t&(void)> bind_mode(uint8_t &(CPU6502::*mode_f)(void)) {
-        return std::bind(mode_f, this);
-    }
-
-    inline std::function<void(uint8_t&)> bit_op(std::function<uint8_t(uint8_t,uint8_t)> f);
-    inline std::function<void(uint8_t&)> branch_op(uint8_t flag, bool value=true);
-    inline std::function<void(uint8_t&)> set_op(uint8_t flag, bool value=true);
-    inline std::function<void(uint8_t&)> compare_op(uint8_t &reg);
-    inline std::function<void(uint8_t&)> step_op(bool decrement=false);
-    inline std::function<void(uint8_t&)> step_reg_op(uint8_t &reg, bool decrement=false);
-    inline std::function<void(uint8_t&)> load_op(uint8_t &reg);
-    inline std::function<void(uint8_t&)> store_op(const uint8_t &reg);
-    inline std::function<void(uint8_t&)> push_op(const uint8_t &reg);
-    inline std::function<void(uint8_t&)> pop_op(uint8_t &reg);
-    inline std::function<void(uint8_t&)> transfer_op(const uint8_t &reg_a, uint8_t &reg_b); // a -> b
-
     inline void execute(InstrInfo info) {
         // TODO: Do something with cycles
-        // int temp = PC; // TODO: Remove temp
         uint8_t &data = mode_funcs[info.mode_str]();
         instr_funcs[info.op_str](data);
-        // std::cout << (int)temp << " " << info.op_str << " " << info.mode_str << " " << (int) ((uint16_t&) data) << std::endl;;
-        // std::cout << "(A, X, Y, P, S, offset) = (" << std::hex << (int) A << ", " << (int) X << ", " << (int) Y << ", " << (int) P << ", " << (int) S << ", " << (int) offset << ")" << std::endl;
     }
 
     int step();
@@ -107,20 +115,19 @@ class CPU6502 {
     }
 
     inline void set_flag(uint8_t mask, unsigned char val) {
-        if (val) {
-            P |= mask;
-        }
-        else {
-            P &= ~mask;
-        }
+        P = (val) ? (P | mask) : (P & ~mask);
     }
 
+    // Translates a binary integer to a "Binary Coded Decimal"
+    // i.e. decimal(49) => 0x49
     inline uint8_t to_bcd(uint8_t x) {
         if (x > 99) throw std::invalid_argument("Invalid BCD");
 
         return (x%10) + ((x/10) << 4);
     }
 
+    // Translates "Binary Coded Decimal" to a binary integer
+    // i.e. 0x49 => decimal(49)
     inline uint8_t from_bcd(uint8_t x) {
         if (x > 0x99) throw std::invalid_argument("Invalid BCD");
 
