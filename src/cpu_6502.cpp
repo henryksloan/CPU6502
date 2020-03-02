@@ -77,6 +77,16 @@ CPU6502::CPU6502(std::shared_ptr<Memory> mem)
     instr_funcs["TYA"] = transfer_op(Y, A);
 }
 
+int CPU6502::step() {
+    uint8_t opcode = mem->read_byte(PC);
+    InstrInfo info = Instructions::instr_map.at(opcode);
+    execute(info);
+    PC++;
+
+    // TODO: Something with cycles
+    return info.cycles;
+}
+
 // Returns the result of a binary logic operation (e.g. AND) between A and memory
 std::function<void(uint8_t&)> CPU6502::bit_op(std::function<uint8_t(uint8_t,uint8_t)> f) {
     return [this, f](uint8_t &data) {
@@ -297,12 +307,54 @@ void CPU6502::Op_SBC(uint8_t &data) {
     }
 }
 
-int CPU6502::step() {
-    uint8_t opcode = mem->read_byte(PC);
-    InstrInfo info = Instructions::instr_map.at(opcode);
-    execute(info);
-    PC++;
+void CPU6502::execute(InstrInfo info) {
+    // TODO: Do something with cycles
+    uint8_t &data = mode_funcs[info.mode_str]();
+    instr_funcs[info.op_str](data);
+}
 
-    // TODO: Something with cycles
-    return info.cycles;
+unsigned char CPU6502::get_flag(uint8_t mask) {
+    return (P & mask) ? 1 : 0;
+}
+
+void CPU6502::set_flag(uint8_t mask, unsigned char val) {
+    P = (val) ? (P | mask) : (P & ~mask);
+}
+
+// Translates a binary integer to a "Binary Coded Decimal"
+// i.e. decimal(49) => 0x49
+uint8_t CPU6502::to_bcd(uint8_t x) {
+    if (x > 99) throw std::invalid_argument("Invalid BCD");
+
+    return (x%10) + ((x/10) << 4);
+}
+
+// Translates "Binary Coded Decimal" to a binary integer
+// i.e. 0x49 => decimal(49)
+uint8_t CPU6502::from_bcd(uint8_t x) {
+    if (x > 0x99) throw std::invalid_argument("Invalid BCD");
+
+    return 10*((x & 0xF0) >> 4) + (x&0x0F);
+}
+
+void CPU6502::stack_push(uint8_t data) {
+    mem->write_byte(0x100+S, data);
+    if (S == 0x00) S = 0xFF;
+    else S--;
+}
+
+void CPU6502::stack_push_word(uint16_t data) {
+    stack_push((data >> 8) & 0xFF);
+    stack_push(data & 0xFF);
+}
+
+uint8_t CPU6502::stack_pop() {
+    if (S == 0xFF) S = 0x00;
+    else S++;
+    uint8_t temp = mem->read_byte(0x100+S);
+    return temp;
+}
+
+uint16_t CPU6502::stack_pop_word() {
+    return stack_pop() | (stack_pop() << 8);
 }
