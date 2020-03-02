@@ -103,57 +103,23 @@ class CPU6502 {
     void Op_RTS(uint8_t&);
     void Op_SBC(uint8_t&);
 
-    inline void execute(InstrInfo info) {
-        // TODO: Do something with cycles
-        uint8_t &data = mode_funcs[info.mode_str]();
-        instr_funcs[info.op_str](data);
-    }
+    void execute(InstrInfo info);
 
-    inline unsigned char get_flag(uint8_t mask) {
-        return (P & mask) ? 1 : 0;
-    }
-
-    inline void set_flag(uint8_t mask, unsigned char val) {
-        P = (val) ? (P | mask) : (P & ~mask);
-    }
+    unsigned char get_flag(uint8_t mask);
+    void set_flag(uint8_t mask, unsigned char val);
 
     // Translates a binary integer to a "Binary Coded Decimal"
     // i.e. decimal(49) => 0x49
-    inline uint8_t to_bcd(uint8_t x) {
-        if (x > 99) throw std::invalid_argument("Invalid BCD");
-
-        return (x%10) + ((x/10) << 4);
-    }
+    uint8_t to_bcd(uint8_t x);
 
     // Translates "Binary Coded Decimal" to a binary integer
     // i.e. 0x49 => decimal(49)
-    inline uint8_t from_bcd(uint8_t x) {
-        if (x > 0x99) throw std::invalid_argument("Invalid BCD");
+    uint8_t from_bcd(uint8_t x);
 
-        return 10*((x & 0xF0) >> 4) + (x&0x0F);
-    }
-
-    inline void stack_push(uint8_t data) {
-        mem->write_byte(0x100+S, data);
-        if (S == 0x00) S = 0xFF;
-        else S--;
-    }
-
-    inline void stack_push_word(uint16_t data) {
-        stack_push((data >> 8) & 0xFF);
-        stack_push(data & 0xFF);
-    }
-
-    inline uint8_t stack_pop() {
-        if (S == 0xFF) S = 0x00;
-        else S++;
-        uint8_t temp = mem->read_byte(0x100+S);
-        return temp;
-    }
-
-    inline uint16_t stack_pop_word() {
-        return stack_pop() | (stack_pop() << 8);
-    }
+    void stack_push(uint8_t data);
+    void stack_push_word(uint16_t data);
+    uint8_t stack_pop();
+    uint16_t stack_pop_word();
 };
 
 #endif // CPU_6502
