@@ -6,6 +6,7 @@
 // Basic RAM class without a bus
 // For testing and trivial purposes
 // Emulators should implement Memory to support bussing, etc.
+template <size_t SIZE>
 class RAM : public Memory {
  public:
     virtual inline void write_byte(short addr, uint8_t data) {
@@ -51,7 +52,7 @@ class RAM : public Memory {
     }
 
  protected:
-    std::array<uint8_t, 0x10000> mem;
+    std::array<uint8_t, SIZE> mem;
 };
 
 #endif // RAM_H

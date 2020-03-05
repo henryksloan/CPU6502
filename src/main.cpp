@@ -7,7 +7,7 @@
 #include "ram.h"
 
 int main(int argc, char **argv) {
-    std::shared_ptr<Memory> mem = std::make_shared<RAM>();
+    std::shared_ptr<Memory> mem = std::make_shared<RAM<0x10000>>();
     CPU6502 cpu(mem);
 
     std::ifstream file(argv[1], std::ifstream::binary);
