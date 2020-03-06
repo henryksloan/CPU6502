@@ -151,7 +151,10 @@ std::function<void(uint8_t&)> CPU6502::load_op(uint8_t &reg) {
 }
 
 std::function<void(uint8_t&)> CPU6502::store_op(const uint8_t &reg) {
-    return [&reg](uint8_t &data) { data = reg; };
+    return [this, &reg](uint8_t &data) {
+        data = reg;
+        mem->ref_callback(data);
+    };
 }
 
 std::function<void(uint8_t&)> CPU6502::push_op(const uint8_t &reg) {
@@ -211,6 +214,7 @@ void CPU6502::Op_ADC(uint8_t &data) {
 void CPU6502::Op_ASL(uint8_t &data) {
     set_flag(CARRY, data & 0x80);
     data = (data << 1) & 0xFE;
+    mem->ref_callback(data);
     set_flag(NEGATIVE, data & 0x80);
     set_flag(ZERO, data == 0);
 }
@@ -248,6 +252,7 @@ void CPU6502::Op_JSR(uint8_t &data) {
 void CPU6502::Op_LSR(uint8_t &data) {
     set_flag(CARRY, data & 0x1);
     data = (data >> 1) & 0x7F;
+    mem->ref_callback(data);
     set_flag(NEGATIVE, 0);
     set_flag(ZERO, data == 0);
 }
@@ -259,6 +264,7 @@ void CPU6502::Op_ROL(uint8_t &data) {
     set_flag(CARRY, data & 0x80);
     data = (data << 1);
     data = (temp) ? (data | 0x1) : (data & 0xFE);
+    mem->ref_callback(data);
     set_flag(NEGATIVE, data & 0x80);
     set_flag(ZERO, data == 0);
 }
@@ -270,6 +276,7 @@ void CPU6502::Op_ROR(uint8_t &data) {
     set_flag(CARRY, data & 0x1);
     data = (data >> 1);
     data = (temp) ? (data | 0x80) : (data & 0x7F);
+    mem->ref_callback(data);
     set_flag(NEGATIVE, data & 0x80);
     set_flag(ZERO, data == 0);
 }

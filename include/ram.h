@@ -9,11 +9,11 @@
 template <size_t SIZE>
 class RAM : public Memory {
  public:
-    virtual inline void write_byte(short addr, uint8_t data) {
+    virtual inline void write_byte(uint16_t addr, uint8_t data) {
         mem[addr] = data;
     }
 
-    virtual inline void write_word(short addr, uint16_t data) {
+    virtual inline void write_word(uint16_t addr, uint16_t data) {
         mem[addr] = data & 0x00FF;
         mem[addr+1] = (data & 0xFF00) >> 8;
     }
@@ -29,6 +29,8 @@ class RAM : public Memory {
     virtual inline uint8_t &ref_byte(uint16_t addr) {
         return mem.at(addr);
     }
+
+    virtual inline void ref_callback(uint16_t addr) {}
 
     virtual void load_file(std::ifstream &file, std::istream::pos_type in_start, std::istream::pos_type in_end, uint16_t mem_start) {
         file.seekg(in_start, file.beg);
