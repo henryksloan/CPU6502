@@ -106,6 +106,8 @@ void CPU6502::nmi() {
 }
 
 void CPU6502::irq() {
+    if (get_flag(INTERRUPT)) return;
+
     stack_push_word(PC+2);
     stack_push(P);
     set_flag(INTERRUPT, 1);
