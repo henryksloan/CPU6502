@@ -21,10 +21,18 @@
 #define ZERO      0x02
 #define CARRY     0x01
 
+#define NMI_VEC 0xFFFA
+#define RST_VEC 0xFFFC
+#define IRQ_VEC 0xFFFE
+
 class CPU6502 {
  public:
     CPU6502(std::shared_ptr<Memory> mem);
+
     int step();
+    void reset();
+    void nmi();
+    void irq();
 
  private:
     std::shared_ptr<Memory> mem;

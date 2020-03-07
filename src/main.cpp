@@ -7,9 +7,6 @@
 #include "ram.h"
 
 int main(int argc, char **argv) {
-    std::shared_ptr<Memory> mem = std::make_shared<RAM<0x10000>>();
-    CPU6502 cpu(mem);
-
     std::ifstream file(argv[1], std::ifstream::binary);
     if (!file) {
         std::cerr << "Could not open file " << argv[1] << '\n';
@@ -19,10 +16,16 @@ int main(int argc, char **argv) {
     file.seekg (0, file.end);
     int length = file.tellg();
     file.seekg (0, file.beg);
+
+    std::shared_ptr<Memory> mem = std::make_shared<RAM<0x10000>>();
     mem->load_file(file, 0, length-1, 0x600);
+    mem->write_word(RST_VEC, 0x600);
     // mem->print();
+
     file.clear();
     file.seekg(0, file.beg);
+
+    CPU6502 cpu(mem);
 
     std::unordered_map<int, sf::Color> col {
          {0x0, sf::Color::Black},

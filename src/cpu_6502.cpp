@@ -1,9 +1,9 @@
 #include "cpu_6502.h"
 
 CPU6502::CPU6502(std::shared_ptr<Memory> mem)
-        : mem{mem},
-          A{0}, X{0}, Y{0}, P{0x20}, S{0xff},
-          PC{0x600}, offset(0) {
+        : mem{mem} {
+    reset();
+
     mode_funcs["ACC"] = bind_mode(&CPU6502::Addr_ACC);
     mode_funcs["IMM"] = bind_mode(&CPU6502::Addr_IMM);
     mode_funcs["ABS"] = bind_mode(&CPU6502::Addr_ABS);
@@ -85,6 +85,31 @@ int CPU6502::step() {
 
     // TODO: Something with cycles
     return info.cycles;
+}
+
+void CPU6502::reset() {
+    A = 0x00;
+    X = 0x00;
+    Y = 0x00;
+    P = CONSTANT;
+    S = 0xff;
+
+    PC = mem->read_word(RST_VEC);
+    offset = 0;
+}
+
+void CPU6502::nmi() {
+    stack_push_word(PC+2);
+    stack_push(P);
+    set_flag(INTERRUPT, 1);
+    PC = mem->read_word(NMI_VEC);
+}
+
+void CPU6502::irq() {
+    stack_push_word(PC+2);
+    stack_push(P);
+    set_flag(INTERRUPT, 1);
+    PC = mem->read_word(IRQ_VEC);
 }
 
 // Returns the result of a binary logic operation (e.g. AND) between A and memory
@@ -229,10 +254,10 @@ void CPU6502::Op_BIT(uint8_t &data) {
 
 // Force a system interrupt
 void CPU6502::Op_BRK(uint8_t &data) {
-    set_flag(INTERRUPT, 1);
     stack_push_word(PC+2);
     stack_push(P | BREAK);
-    set_flag(INTERRUPT, true);
+    set_flag(INTERRUPT, 1);
+    PC = mem->read_word(IRQ_VEC);
 }
 
 // Jump PC to a given address
