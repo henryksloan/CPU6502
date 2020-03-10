@@ -18,7 +18,7 @@ class RAM : public Memory {
         mem[addr+1] = (data & 0xFF00) >> 8;
     }
 
-    virtual inline uint16_t read_byte(uint16_t addr) {
+    virtual inline uint8_t read_byte(uint16_t addr) {
         return mem[addr];
     }
 
