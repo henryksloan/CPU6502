@@ -29,7 +29,7 @@ class CPU6502 {
  public:
     CPU6502(std::shared_ptr<Memory> mem);
 
-    int step();
+    void step();
     void reset();
     void nmi();
     void irq();
@@ -49,6 +49,9 @@ class CPU6502 {
     // 16-bit program counter
     uint16_t PC;
     uint16_t offset;
+
+    // Number of cycles remaining for current instruction
+    int cycles_left;
 
     // Addressing modes return a reference to the appropriate data
     // Note that all of them return actual data, IMM returns the uint16_t at PC+1

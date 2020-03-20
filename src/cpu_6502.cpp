@@ -77,14 +77,18 @@ CPU6502::CPU6502(std::shared_ptr<Memory> mem)
     instr_funcs["TYA"] = transfer_op(Y, A);
 }
 
-int CPU6502::step() {
-    uint8_t opcode = mem->read_byte(PC);
-    InstrInfo info = Instructions::instr_map.at(opcode);
-    execute(info);
-    PC++;
-
-    // TODO: Something with cycles
-    return info.cycles;
+void CPU6502::step() {
+    if (cycles_left > 0) {
+        cycles_left--;
+    }
+    else {
+        uint8_t opcode = mem->read_byte(PC);
+        std::cout << std::hex << "0x" << (int) PC << ": 0x" << (int) opcode << std::endl;
+        InstrInfo info = Instructions::instr_map.at(opcode);
+        execute(info);
+        PC++;
+        cycles_left = info.cycles; // TODO: Account for extra cycles
+    }
 }
 
 void CPU6502::reset() {
@@ -96,6 +100,8 @@ void CPU6502::reset() {
 
     PC = mem->read_word(RST_VEC);
     offset = 0;
+
+    cycles_left = 0;
 }
 
 void CPU6502::nmi() {

@@ -57,4 +57,7 @@ class RAM : public Memory {
     std::array<uint8_t, SIZE> mem;
 };
 
+template class RAM<0x100>;
+template class RAM<0x20>;
+
 #endif // RAM_H
