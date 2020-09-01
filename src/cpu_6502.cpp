@@ -222,24 +222,19 @@ uint8_t &CPU6502::Addr_ABI() { offset=0; int temp = PC; PC += 2; return mem->ref
 
 // Add memory to accumulator with carry
 void CPU6502::Op_ADC(uint8_t &data) {
-    // TODO: Fix various behaviors
-    // TODO: Implement overflow
-    // http://www.6502.org/tutorials/decimal_mode.html
-    unsigned int sum = A + data + get_flag(CARRY);
-    set_flag(OVERFLOW, sum>0xFF);
+    unsigned int sum;
     if (get_flag(DECIMAL)) {
         sum = from_bcd(A) + from_bcd(data) + get_flag(CARRY);
-        set_flag(ZERO, sum == 0); // TODO: What about carry and overflow?
-        set_flag(NEGATIVE, sum & 0x80);
         set_flag(CARRY, sum > 99);
-        A = to_bcd(sum % 100);
-    }
-    else {
-        set_flag(ZERO, sum == 0); // TODO: What about carry and overflow?
-        set_flag(NEGATIVE, sum & 0x80);
+        sum = to_bcd(sum % 100);
+    } else {
+        sum = A + data + get_flag(CARRY);
         set_flag(CARRY, sum > 0xFF);
-        A = sum & 0xFF;
     }
+    A = sum & 0xFF;
+    set_flag(OVERFLOW, ((A^sum)&(data^sum)&0x80) != 0); // TODO: ??
+    set_flag(ZERO, sum == 0);
+    set_flag(NEGATIVE, sum & 0x80);
 }
 
 // Arithmetic shift left, with carry
@@ -327,24 +322,19 @@ void CPU6502::Op_RTS(uint8_t &data) {
 
 // Add memory to accumulator with carry
 void CPU6502::Op_SBC(uint8_t &data) {
-    // TODO: Fix various behaviors
-    // TODO: Implement overflow
-    // http://www.6502.org/tutorials/decimal_mode.html
-    unsigned int diff = A - data - get_flag(CARRY);
-    set_flag(OVERFLOW, diff>0xFF);
+    unsigned int diff;
     if (get_flag(DECIMAL)) {
-        diff = from_bcd(A) - from_bcd(data) - get_flag(CARRY);
-        set_flag(ZERO, diff == 0); // TODO: What about carry and overflow?
-        set_flag(NEGATIVE, diff & 0x80);
-        set_flag(CARRY, ~(diff & 0x80));
-        A = to_bcd(diff % 100);
+        diff = from_bcd(A) - from_bcd(data) - 1 + get_flag(CARRY);
+        diff = to_bcd(diff % 100);
     }
     else {
-        set_flag(ZERO, diff == 0); // TODO: What about carry and overflow?
-        set_flag(NEGATIVE, diff & 0x80);
-        set_flag(CARRY, ~(diff & 0x80));
-        A = diff & 0xFF;
+        diff = A - data - 1 + get_flag(CARRY);
     }
+    A = diff & 0xFF;
+    set_flag(CARRY, diff < 0x100);
+    set_flag(OVERFLOW, ((A^diff)&(A^data)&0x80) != 0); // TODO: ??
+    set_flag(NEGATIVE, A & 0x80);
+    set_flag(ZERO, A == 0);
 }
 
 void CPU6502::execute(InstrInfo info) {

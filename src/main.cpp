@@ -1,10 +1,12 @@
 #include <thread>
 #include <atomic>
 #include <cmath>
+#include <cstdlib>
 #include <SFML/Graphics.hpp>
 
 #include "cpu_6502.h"
 #include "ram.h"
+#include "disassembler.h"
 
 int main(int argc, char **argv) {
     std::ifstream file(argv[1], std::ifstream::binary);
@@ -17,10 +19,13 @@ int main(int argc, char **argv) {
     int length = file.tellg();
     file.seekg (0, file.beg);
 
+    Disassembler d(0x600);
+    d.file_to_strings(file);
+    file = std::ifstream(argv[1], std::ifstream::binary);
+
     std::shared_ptr<Memory> mem = std::make_shared<RAM<0x10000>>();
     mem->load_file(file, 0, length-1, 0x600);
     mem->write_word(RST_VEC, 0x600);
-    // mem->print();
 
     file.clear();
     file.seekg(0, file.beg);
