@@ -9,6 +9,8 @@
 template <size_t SIZE>
 class RAM : public Memory {
  public:
+    RAM() : mem() {}
+
     virtual inline void write_byte(uint16_t addr, uint8_t data) {
         mem[addr] = data;
     }
@@ -30,7 +32,7 @@ class RAM : public Memory {
         return mem.at(addr);
     }
 
-    virtual inline void ref_callback(uint16_t addr) {}
+    virtual inline void ref_callback(uint8_t &data) {}
 
     virtual void load_file(std::ifstream &file, std::istream::pos_type in_start, std::istream::pos_type in_end, uint16_t mem_start) {
         file.seekg(in_start, file.beg);

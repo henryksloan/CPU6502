@@ -49,6 +49,7 @@ class CPU6502 {
     // 16-bit program counter
     uint16_t PC;
     uint16_t offset;
+    uint16_t jump;
 
     // Number of cycles remaining for current instruction
     int cycles_left;
@@ -113,6 +114,11 @@ class CPU6502 {
     void Op_RTI(uint8_t&);
     void Op_RTS(uint8_t&);
     void Op_SBC(uint8_t&);
+
+    // https://wiki.nesdev.com/w/index.php/CPU_unofficial_opcodes
+    void Op_LAX(uint8_t&);
+    void Op_SAX(uint8_t&);
+    void Op_DCP(uint8_t&);
 
     void execute(InstrInfo info);
 

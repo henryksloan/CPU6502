@@ -75,6 +75,11 @@ CPU6502::CPU6502(std::shared_ptr<Memory> mem)
     instr_funcs["TXA"] = transfer_op(X, A);
     instr_funcs["TXS"] = transfer_op(X, S);
     instr_funcs["TYA"] = transfer_op(Y, A);
+
+    // https://wiki.nesdev.com/w/index.php/CPU_unofficial_opcodes
+    instr_funcs["LAX"] = bind_op(&CPU6502::Op_LAX);
+    instr_funcs["SAX"] = bind_op(&CPU6502::Op_SAX);
+    instr_funcs["DCP"] = bind_op(&CPU6502::Op_DCP);
 }
 
 void CPU6502::step() {
@@ -83,8 +88,17 @@ void CPU6502::step() {
     }
     else {
         uint8_t opcode = mem->read_byte(PC);
-        std::cout << std::hex << "0x" << (int) PC << ": 0x" << (int) opcode << std::endl;
-        InstrInfo info = Instructions::instr_map.at(opcode);
+        // std::cout << std::hex << "0x" << (int) PC << ": 0x" << (int) opcode << std::endl;
+        std::cout << std::hex << "0x" << (int) PC << ": 0x" << (int) opcode
+            << " A:" << std::hex << std::setfill('0') << std::setw(2) << (int) A
+            << " X:" << std::hex << std::setfill('0') << std::setw(2) << (int) X
+            << " Y:" << std::hex << std::setfill('0') << std::setw(2) << (int) Y
+            << " P:" << std::hex << std::setfill('0') << std::setw(2) << (int) P
+            << " SP:" << std::hex << std::setfill('0') << std::setw(2) << (int) S
+            << std::endl;
+        // InstrInfo info = Instructions::instr_map.at(opcode);
+        InstrInfo info = Instructions::get_info(opcode);
+
         execute(info);
         PC++;
         cycles_left = info.cycles; // TODO: Account for extra cycles
@@ -95,11 +109,12 @@ void CPU6502::reset() {
     A = 0x00;
     X = 0x00;
     Y = 0x00;
-    P = CONSTANT;
-    S = 0xff;
+    P = CONSTANT | INTERRUPT;
+    S = 0xfd;
 
     PC = mem->read_word(RST_VEC);
     offset = 0;
+    jump = 0;
 
     cycles_left = 0;
 }
@@ -152,7 +167,7 @@ std::function<void(uint8_t&)> CPU6502::compare_op(uint8_t &reg) {
         int temp = reg - data;
         set_flag(NEGATIVE, temp & 0x80);
         set_flag(ZERO, temp == 0);
-        set_flag(CARRY, temp > 0xff);
+        set_flag(CARRY, temp >= 0x0);
     };
 }
 
@@ -185,6 +200,7 @@ std::function<void(uint8_t&)> CPU6502::load_op(uint8_t &reg) {
 
 std::function<void(uint8_t&)> CPU6502::store_op(const uint8_t &reg) {
     return [this, &reg](uint8_t &data) {
+        std::cout << "YAYA\n";
         data = reg;
         mem->ref_callback(data);
     };
@@ -195,45 +211,86 @@ std::function<void(uint8_t&)> CPU6502::push_op(const uint8_t &reg) {
 }
 
 std::function<void(uint8_t&)> CPU6502::pop_op(uint8_t &reg) {
-    return [this, &reg](uint8_t &data) { reg = stack_pop(); };
+    return [this, &reg](uint8_t &data) {
+        auto temp = P;
+        reg = stack_pop();
+        if (temp == P) {
+            set_flag(NEGATIVE, A & 0x80);
+            set_flag(ZERO, A == 0);
+        }
+    };
 }
 
 std::function<void(uint8_t&)> CPU6502::transfer_op(const uint8_t &reg_a, uint8_t &reg_b) {
     return [this, &reg_a, &reg_b](uint8_t &data) {
+        auto temp = S;
         reg_b = reg_a;
-        set_flag(NEGATIVE, reg_b & 0x80);
-        set_flag(ZERO, reg_b == 0);
+        if (temp == S) {
+            set_flag(NEGATIVE, A & 0x80);
+            set_flag(ZERO, A == 0);
+        }
     };
 }
 
 uint8_t &CPU6502::Addr_ACC() { return A; }
 uint8_t &CPU6502::Addr_IMM() { return mem->ref_byte(++PC); }
-uint8_t &CPU6502::Addr_ABS() { offset = 0; int temp = PC; PC += 2; return mem->ref_byte(temp+1); }
+// uint8_t &CPU6502::Addr_ABS() { offset = 0; int temp = PC; PC += 2; return mem->ref_byte(temp+1); }
+uint8_t &CPU6502::Addr_ABS() { std::cout << "Got " << std::setfill('0') << std::setw(4) << (int) mem->read_word(PC + 1) << std::endl; jump = mem->read_word(PC+1)-1; offset = 0; int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); }
 uint8_t &CPU6502::Addr_ZER() { return mem->ref_byte(mem->read_byte(++PC)); }
-uint8_t &CPU6502::Addr_ZEX() { return mem->ref_byte(mem->read_byte(++PC) + X); }
-uint8_t &CPU6502::Addr_ZEY() { return mem->ref_byte(mem->read_byte(++PC) + Y); }
+uint8_t &CPU6502::Addr_ZEX() { return mem->ref_byte((mem->read_byte(++PC) + X) & 0xFF); }
+uint8_t &CPU6502::Addr_ZEY() { return mem->ref_byte((mem->read_byte(++PC) + Y) & 0xFF); }
 uint8_t &CPU6502::Addr_ABX() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + X); }
 uint8_t &CPU6502::Addr_ABY() { int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1) + Y); }
 uint8_t &CPU6502::Addr_IMP() { return mem->ref_byte(0); } // Dummy implementation
 uint8_t &CPU6502::Addr_REL() { int temp = PC; PC++; offset=(int8_t) mem->read_byte(temp+1); return (uint8_t&) PC; }
-uint8_t &CPU6502::Addr_INX() { return mem->ref_byte(mem->read_word(mem->read_byte(++PC) + (int8_t) X)); }
-uint8_t &CPU6502::Addr_INY() { return mem->ref_byte(mem->read_word(mem->read_byte(++PC)) + (int8_t) Y); }
-uint8_t &CPU6502::Addr_ABI() { offset=0; int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); }
+uint8_t &CPU6502::Addr_INX() { 
+    // std::cout << "XXX: (" << std::hex << std::setfill('0') << std::setw(4) << (int) mem->read_byte(PC+1) << " + X) & 0xFF @ " << std::setfill('0') << std::setw(4) << (int) ((mem->read_byte(PC+1) + (int8_t) X) & 0xFF) << " = "  << std::setfill('0') << std::setw(4)<< (int) mem->read_word((mem->read_byte(PC+1) + (int8_t) X) & 0xFF) << " = "  << std::setfill('0') << std::setw(4) << (int) mem->ref_byte(mem->read_word((mem->read_byte(PC+1) + (int8_t) X) & 0xFF)) << std::endl;
+    // return mem->ref_byte(mem->read_word((mem->read_byte(++PC) + (int8_t) X) & 0xFF));
+    PC++;
+    return mem->ref_byte(mem->read_byte((mem->read_byte(PC) + (int8_t) X) & 0xFF) | (mem->read_byte((mem->read_byte(PC) + (int8_t) X + 1) & 0xFF) << 8));
+}
+uint8_t &CPU6502::Addr_INY() {
+    // std::cout << "YYY: " << std::hex << std::setfill('0') << std::setw(4) << (int) mem->read_byte(PC+1) << "[" << std::setw(4) << (int) mem->read_word(mem->read_byte(PC+1)) << "] + Y = " << (int) (mem->read_word(mem->read_byte(PC+1)) + (int16_t) Y) << " : " << (int) mem->ref_byte(mem->read_word(mem->read_byte(PC+1)) + (int16_t) Y) << std::endl;
+    // return mem->ref_byte(mem->read_word(mem->read_byte(++PC)) + (int16_t) Y);
+    PC++;
+    return mem->ref_byte((mem->read_byte(mem->read_byte(PC)) | (mem->read_byte((mem->read_byte(PC) + 1) & 0xFF) << 8)) + (int16_t) Y);
+}
+// uint8_t &CPU6502::Addr_ABI() { offset=0; int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); }
+uint8_t &CPU6502::Addr_ABI() { 
+    uint16_t lo = mem->read_byte(++PC);
+    uint16_t hi = mem->read_byte(++PC);
+    uint16_t ptr = (hi << 8) | lo;
+
+    if (lo == 0x00FF) {
+        jump = ((mem->read_byte(ptr & 0xFF00) << 8) | mem->read_byte(ptr)) - 1;
+    } else {
+        jump = ((mem->read_byte(ptr + 1) << 8) | mem->read_byte(ptr)) - 1;
+    }
+
+    // jump = mem->read_word(mem->read_word(PC+1))-1;
+    // offset=0;
+    // int temp = PC;
+    // PC += 2;
+    return mem->ref_byte(0); }
 
 // Add memory to accumulator with carry
 void CPU6502::Op_ADC(uint8_t &data) {
     unsigned int sum;
-    if (get_flag(DECIMAL)) {
+    // if (get_flag(DECIMAL)) {
+    if (false && get_flag(DECIMAL)) {
         sum = from_bcd(A) + from_bcd(data) + get_flag(CARRY);
         set_flag(CARRY, sum > 99);
         sum = to_bcd(sum % 100);
     } else {
-        sum = A + data + get_flag(CARRY);
+        // sum = A + data + get_flag(CARRY);
+        sum = (uint16_t) A + (uint16_t) data + (uint16_t) get_flag(CARRY);
         set_flag(CARRY, sum > 0xFF);
     }
-    A = sum & 0xFF;
+    // set_flag(OVERFLOW, (~(((uint16_t) A ^ (uint16_t) data)&((uint16_t) A^ (uint16_t) sum))) & 0x80); // TODO: ??
     set_flag(OVERFLOW, ((A^sum)&(data^sum)&0x80) != 0); // TODO: ??
-    set_flag(ZERO, sum == 0);
+    A = sum & 0xFF;
+    // set_flag(OVERFLOW, ((A^sum)&(data^sum)&0x80) != 0); // TODO: ??
+    set_flag(ZERO, A == 0); // sum == 0);
     set_flag(NEGATIVE, sum & 0x80);
 }
 
@@ -251,6 +308,7 @@ void CPU6502::Op_ASL(uint8_t &data) {
 // 2 most significant bits are transferred from data to P [Flags N and V]
 // Then Flag Z is set according to data & A
 void CPU6502::Op_BIT(uint8_t &data) {
+    P |= 0xC0;
     P &= (data & 0xC0) | 0x3F;
     set_flag(ZERO, (data & A) == 0);
 }
@@ -265,13 +323,15 @@ void CPU6502::Op_BRK(uint8_t &data) {
 
 // Jump PC to a given address
 void CPU6502::Op_JMP(uint8_t &data) {
-    PC = ((uint16_t&) data+offset-1);
+    // PC = ((uint16_t&) data+offset-1);
+    PC = jump;
 }
 
 // Jump PC to a given address, storing the return address
 void CPU6502::Op_JSR(uint8_t &data) {
     stack_push_word(PC);
-    PC = ((uint16_t&) data+offset-1);
+    // PC = ((uint16_t&) data+offset-1);
+    PC = jump;
 }
 
 
@@ -312,7 +372,7 @@ void CPU6502::Op_ROR(uint8_t &data) {
 // Return from interrupt
 void CPU6502::Op_RTI(uint8_t &data) {
     P = stack_pop();
-    PC = stack_pop_word();
+    PC = stack_pop_word()-1; // TODO: Check this subtract
 }
 
 // Return from subroutine
@@ -323,24 +383,50 @@ void CPU6502::Op_RTS(uint8_t &data) {
 // Add memory to accumulator with carry
 void CPU6502::Op_SBC(uint8_t &data) {
     unsigned int diff;
-    if (get_flag(DECIMAL)) {
+    // if (get_flag(DECIMAL)) {
+    if (false && get_flag(DECIMAL)) {
         diff = from_bcd(A) - from_bcd(data) - 1 + get_flag(CARRY);
         diff = to_bcd(diff % 100);
     }
     else {
         diff = A - data - 1 + get_flag(CARRY);
     }
+    // set_flag(OVERFLOW, (diff ^ (uint16_t) A) & (diff^(((uint16_t) data) ^ 0x00FF)) & 0x80); // TODO: ??
+    set_flag(OVERFLOW, ((A^diff)&(A^data)&0x80) != 0); // TODO: ??
     A = diff & 0xFF;
     set_flag(CARRY, diff < 0x100);
-    set_flag(OVERFLOW, ((A^diff)&(A^data)&0x80) != 0); // TODO: ??
+    // set_flag(OVERFLOW, ((A^diff)&(A^data)&0x80) != 0); // TODO: ??
     set_flag(NEGATIVE, A & 0x80);
     set_flag(ZERO, A == 0);
+}
+
+// UNOFFICIAL: Load A and X with data
+void CPU6502::Op_LAX(uint8_t &data) {
+    A = data;
+    X = data;
+    set_flag(NEGATIVE, A & 0x80);
+    set_flag(ZERO, X == 0);
+}
+
+// UNOFFICIAL: Store (A & X) in memory
+void CPU6502::Op_SAX(uint8_t &data) {
+    data = A & X;
+}
+
+// UNOFFICIAL: Decrement data and then compare with A
+void CPU6502::Op_DCP(uint8_t &data) {
+    instr_funcs["DEX"](data);
+    instr_funcs["CMP"](data);
 }
 
 void CPU6502::execute(InstrInfo info) {
     // TODO: Do something with cycles
     uint8_t &data = mode_funcs[info.mode_str]();
-    instr_funcs[info.op_str](data);
+    std::cout << info.mode_str << " " << ((uint16_t&) data) << std::endl;
+    auto instr_func = instr_funcs.find(info.op_str);
+    if (instr_func != instr_funcs.end()) {
+        instr_func->second(data);
+    }
 }
 
 unsigned char CPU6502::get_flag(uint8_t mask) {

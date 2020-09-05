@@ -1,5 +1,13 @@
 #include "instruction.h"
 
+InstrInfo Instructions::get_info(uint8_t opcode) {
+    auto info_it = instr_map.find(opcode);
+    if (info_it == instr_map.end()) {
+        return {"NOP", "IMP", 4};
+    }
+    return info_it->second;
+}
+
 void Instructions::add_instr(instr_map_t &map, std::string op_str, std::vector<InstrMode> modes) {
     for (auto mode : modes) {
         map[mode.opcode] = { op_str, mode.mode_str, mode.cycles };
@@ -46,13 +54,13 @@ Instructions::instr_map_t Instructions::generate_instr_map() {
     add_instr(map, "JSR", {{0x20, "ABS", 6}});
     add_instr(map, "LDA", {{0xA9, "IMM", 2}, {0xA5, "ZER", 3}, {0xB5, "ZEX", 4}, {0xAD, "ABS", 4},
                            {0xBD, "ABX", 4}, {0xB9, "ABY", 4}, {0xA1, "INX", 6}, {0xB1, "INY", 5}});
-    add_instr(map, "LDX", {{0xA2, "IMM", 2}, {0xA6, "ZER", 3}, {0xB6, "ZEX", 4},
-                           {0xAE, "ABS", 4}, {0xBE, "ABX", 4}});
+    add_instr(map, "LDX", {{0xA2, "IMM", 2}, {0xA6, "ZER", 3}, {0xB6, "ZEY", 4},
+                           {0xAE, "ABS", 4}, {0xBE, "ABY", 4}});
     add_instr(map, "LDY", {{0xA0, "IMM", 2}, {0xA4, "ZER", 3}, {0xB4, "ZEX", 4},
                            {0xAC, "ABS", 4}, {0xBC, "ABX", 4}});
     add_instr(map, "LSR", {{0x4A, "ACC", 2}, {0x46, "ZER", 5}, {0x56, "ZEX", 6},
                            {0x4E, "ABS", 6}, {0x5E, "ABX", 7}});
-    add_instr(map, "NOP", {{0xEA, "IMP", 2}});
+    // add_instr(map, "NOP", {{0xEA, "IMP", 2}});
     add_instr(map, "ORA", {{0x09, "IMM", 2}, {0x05, "ZER", 3}, {0x15, "ZEX", 4}, {0x0D, "ABS", 4},
                            {0x1D, "ABX", 4}, {0x19, "ABY", 4}, {0x01, "INX", 6}, {0x11, "INY", 5}});
     add_instr(map, "PHA", {{0x48, "IMP", 2}});
@@ -72,7 +80,7 @@ Instructions::instr_map_t Instructions::generate_instr_map() {
     add_instr(map, "SEI", {{0x78, "IMP", 2}});
     add_instr(map, "STA", {{0x85, "ZER", 3}, {0x95, "ZEX", 4}, {0x8D, "ABS", 4}, {0x9D, "ABX", 5},
                            {0x99, "ABY", 5}, {0x81, "INX", 6}, {0x91, "INY", 6}});
-    add_instr(map, "STX", {{0x86, "ZER", 3}, {0x96, "ZEX", 4}, {0x8E, "ABS", 4}});
+    add_instr(map, "STX", {{0x86, "ZER", 3}, {0x96, "ZEY", 4}, {0x8E, "ABS", 4}});
     add_instr(map, "STY", {{0x84, "ZER", 3}, {0x94, "ZEX", 4}, {0x8C, "ABS", 4}});
     add_instr(map, "TAX", {{0xAA, "IMP", 2}});
     add_instr(map, "TAY", {{0xA8, "IMP", 2}});
@@ -81,6 +89,39 @@ Instructions::instr_map_t Instructions::generate_instr_map() {
     add_instr(map, "TXS", {{0x9A, "IMP", 2}});
     add_instr(map, "TYA", {{0x98, "IMP", 2}});
 
+    // https://wiki.nesdev.com/w/index.php/CPU_unofficial_opcodes
+    add_instr(map, "NOP", {{0x80, "IMM", 2},
+                           {0x82, "IMM", 2}, {0xC2, "IMM", 2}, {0xE2, "IMM", 2},
+                           {0x04, "ZER", 2}, {0x44, "ZER", 2}, {0x64, "ZER", 2},
+                           {0x89, "IMM", 2},
+                           {0xEA, "IMP", 2},
+                           {0x0C, "ABS", 2},
+                           {0x14, "ZEX", 2}, {0x34, "ZEX", 2}, {0x54, "ZEX", 2},
+                           {0x74, "ZEX", 2}, {0xD4, "ZEX", 2}, {0xF4, "ZEX", 2},
+                           {0x1A, "IMP", 2}, {0x3A, "IMP", 2}, {0x5A, "IMP", 2},
+                           {0x7A, "IMP", 2}, {0xDA, "IMP", 2}, {0xFA, "IMP", 2},
+                           {0x1C, "ABX", 2}, {0x3C, "ABX", 2}, {0x5C, "ABX", 2},
+                           {0x7C, "ABX", 2}, {0xDC, "ABX", 2}, {0xFC, "ABX", 2}});
+    add_instr(map, "STP", {{0x02, "IMM", 2}, {0x22, "IMM", 2}, {0x42, "IMM", 2}, {0x62, "IMM", 2},
+                           {0x12, "ZEX", 2}, {0x32, "ZEX", 2}, {0x52, "ZEX", 2}, {0x72, "ZEX", 2},
+                           {0xD2, "ZEX", 2}, {0xF2, "ZEX", 2}});
+    add_instr(map, "SLO", {{0x03, "INX", 2}, {0x07, "ZER", 2}, {0x0F, "ABS", 2}, {0x13, "INY", 2},
+                           {0x17, "ZEX", 2}, {0x1B, "ABY", 2}, {0x1F, "ABX", 2}});
+    add_instr(map, "RLA", {{0x23, "INX", 2}, {0x27, "ZER", 2}, {0x2F, "ABS", 2}, {0x33, "INY", 2},
+                           {0x37, "ZEX", 2}, {0x3B, "ABY", 2}, {0x3F, "ABX", 2}});
+    add_instr(map, "SRE", {{0x43, "INX", 2}, {0x47, "ZER", 2}, {0x4F, "ABS", 2}, {0x53, "INY", 2},
+                           {0x57, "ZEX", 2}, {0x5B, "ABY", 2}, {0x5F, "ABX", 2}});
+    add_instr(map, "RRA", {{0x63, "INX", 2}, {0x67, "ZER", 2}, {0x6F, "ABS", 2}, {0x73, "INY", 2},
+                           {0x77, "ZEX", 2}, {0x7B, "ABY", 2}, {0x7F, "ABX", 2}});
+    add_instr(map, "SAX", {{0x83, "INX", 2}, {0x87, "ZER", 2}, {0x8F, "ABS", 2}, {0x97, "ZEY", 2}});
+    add_instr(map, "SBC", {{0xEB, "IMM", 2}});
+    add_instr(map, "LAX", {{0xA3, "INX", 2}, {0xA7, "ZER", 2}, {0xAF, "ABS", 2}, {0xB3, "INY", 2},
+                           {0xB7, "ZEY", 2}, {0xBF, "ABY", 2}});
+    add_instr(map, "LAS", {{0xBB, "ABY", 2}});
+    add_instr(map, "DCP", {{0xC3, "INX", 2}, {0xC7, "ZER", 2}, {0xCF, "ABS", 2}, {0xD3, "INY", 2},
+                           {0xD7, "ZEX", 2}, {0xDB, "ABY", 2}, {0xDF, "ABX", 2}});
+    add_instr(map, "ISC", {{0xE3, "INX", 2}, {0xE7, "ZER", 2}, {0xEF, "ABS", 2}, {0xF3, "INY", 2},
+                           {0xF7, "ZEX", 2}, {0xFB, "ABY", 2}, {0xFF, "ABX", 2}});
     return map;
 }
 
