@@ -318,14 +318,12 @@ void CPU6502::Op_BRK(uint8_t &data) {
 
 // Jump PC to a given address
 void CPU6502::Op_JMP(uint8_t &data) {
-    // PC = ((uint16_t&) data+offset-1);
     PC = jump;
 }
 
 // Jump PC to a given address, storing the return address
 void CPU6502::Op_JSR(uint8_t &data) {
     stack_push_word(PC);
-    // PC = ((uint16_t&) data+offset-1);
     PC = jump;
 }
 
