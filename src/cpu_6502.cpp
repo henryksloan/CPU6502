@@ -77,9 +77,15 @@ CPU6502::CPU6502(std::shared_ptr<Memory> mem)
     instr_funcs["TYA"] = transfer_op(Y, A);
 
     // https://wiki.nesdev.com/w/index.php/CPU_unofficial_opcodes
+    // TODO: Several of these could be implemented as combined_op(vector<string>)
     instr_funcs["LAX"] = bind_op(&CPU6502::Op_LAX);
     instr_funcs["SAX"] = bind_op(&CPU6502::Op_SAX);
     instr_funcs["DCP"] = bind_op(&CPU6502::Op_DCP);
+    instr_funcs["ISC"] = bind_op(&CPU6502::Op_ISC);
+    instr_funcs["SLO"] = bind_op(&CPU6502::Op_SLO);
+    instr_funcs["RLA"] = bind_op(&CPU6502::Op_RLA);
+    instr_funcs["SRE"] = bind_op(&CPU6502::Op_SRE);
+    instr_funcs["RRA"] = bind_op(&CPU6502::Op_RRA);
 }
 
 void CPU6502::step() {
@@ -244,19 +250,14 @@ uint8_t &CPU6502::Addr_ABY() { int temp = PC; PC += 2; return mem->ref_byte(mem-
 uint8_t &CPU6502::Addr_IMP() { return mem->ref_byte(0); } // Dummy implementation
 uint8_t &CPU6502::Addr_REL() { int temp = PC; PC++; offset=(int8_t) mem->read_byte(temp+1); return (uint8_t&) PC; }
 uint8_t &CPU6502::Addr_INX() { 
-    // std::cout << "XXX: (" << std::hex << std::setfill('0') << std::setw(4) << (int) mem->read_byte(PC+1) << " + X) & 0xFF @ " << std::setfill('0') << std::setw(4) << (int) ((mem->read_byte(PC+1) + (int8_t) X) & 0xFF) << " = "  << std::setfill('0') << std::setw(4)<< (int) mem->read_word((mem->read_byte(PC+1) + (int8_t) X) & 0xFF) << " = "  << std::setfill('0') << std::setw(4) << (int) mem->ref_byte(mem->read_word((mem->read_byte(PC+1) + (int8_t) X) & 0xFF)) << std::endl;
-    // return mem->ref_byte(mem->read_word((mem->read_byte(++PC) + (int8_t) X) & 0xFF));
     PC++;
     return mem->ref_byte(mem->read_byte((mem->read_byte(PC) + (int8_t) X) & 0xFF) | (mem->read_byte((mem->read_byte(PC) + (int8_t) X + 1) & 0xFF) << 8));
 }
 uint8_t &CPU6502::Addr_INY() {
-    // std::cout << "YYY: " << std::hex << std::setfill('0') << std::setw(4) << (int) mem->read_byte(PC+1) << "[" << std::setw(4) << (int) mem->read_word(mem->read_byte(PC+1)) << "] + Y = " << (int) (mem->read_word(mem->read_byte(PC+1)) + (int16_t) Y) << " : " << (int) mem->ref_byte(mem->read_word(mem->read_byte(PC+1)) + (int16_t) Y) << std::endl;
-    // return mem->ref_byte(mem->read_word(mem->read_byte(++PC)) + (int16_t) Y);
     PC++;
     return mem->ref_byte((mem->read_byte(mem->read_byte(PC)) | (mem->read_byte((mem->read_byte(PC) + 1) & 0xFF) << 8)) + (int16_t) Y);
 }
-// uint8_t &CPU6502::Addr_ABI() { offset=0; int temp = PC; PC += 2; return mem->ref_byte(mem->read_word(temp+1)); }
-uint8_t &CPU6502::Addr_ABI() { 
+uint8_t &CPU6502::Addr_ABI() {
     uint16_t lo = mem->read_byte(++PC);
     uint16_t hi = mem->read_byte(++PC);
     uint16_t ptr = (hi << 8) | lo;
@@ -267,11 +268,8 @@ uint8_t &CPU6502::Addr_ABI() {
         jump = ((mem->read_byte(ptr + 1) << 8) | mem->read_byte(ptr)) - 1;
     }
 
-    // jump = mem->read_word(mem->read_word(PC+1))-1;
-    // offset=0;
-    // int temp = PC;
-    // PC += 2;
-    return mem->ref_byte(0); }
+    return mem->ref_byte(0);
+}
 
 // Add memory to accumulator with carry
 void CPU6502::Op_ADC(uint8_t &data) {
@@ -282,14 +280,11 @@ void CPU6502::Op_ADC(uint8_t &data) {
         set_flag(CARRY, sum > 99);
         sum = to_bcd(sum % 100);
     } else {
-        // sum = A + data + get_flag(CARRY);
         sum = (uint16_t) A + (uint16_t) data + (uint16_t) get_flag(CARRY);
         set_flag(CARRY, sum > 0xFF);
     }
-    // set_flag(OVERFLOW, (~(((uint16_t) A ^ (uint16_t) data)&((uint16_t) A^ (uint16_t) sum))) & 0x80); // TODO: ??
-    set_flag(OVERFLOW, ((A^sum)&(data^sum)&0x80) != 0); // TODO: ??
+    set_flag(OVERFLOW, ((A^sum)&(data^sum)&0x80) != 0);
     A = sum & 0xFF;
-    // set_flag(OVERFLOW, ((A^sum)&(data^sum)&0x80) != 0); // TODO: ??
     set_flag(ZERO, A == 0); // sum == 0);
     set_flag(NEGATIVE, sum & 0x80);
 }
@@ -391,11 +386,9 @@ void CPU6502::Op_SBC(uint8_t &data) {
     else {
         diff = A - data - 1 + get_flag(CARRY);
     }
-    // set_flag(OVERFLOW, (diff ^ (uint16_t) A) & (diff^(((uint16_t) data) ^ 0x00FF)) & 0x80); // TODO: ??
-    set_flag(OVERFLOW, ((A^diff)&(A^data)&0x80) != 0); // TODO: ??
+    set_flag(OVERFLOW, ((A^diff)&(A^data)&0x80) != 0);
     A = diff & 0xFF;
     set_flag(CARRY, diff < 0x100);
-    // set_flag(OVERFLOW, ((A^diff)&(A^data)&0x80) != 0); // TODO: ??
     set_flag(NEGATIVE, A & 0x80);
     set_flag(ZERO, A == 0);
 }
@@ -415,8 +408,38 @@ void CPU6502::Op_SAX(uint8_t &data) {
 
 // UNOFFICIAL: Decrement data and then compare with A
 void CPU6502::Op_DCP(uint8_t &data) {
-    instr_funcs["DEX"](data);
+    instr_funcs["DEC"](data);
     instr_funcs["CMP"](data);
+}
+
+// UNOFFICIAL: Increment data and then set A to (A - data)
+void CPU6502::Op_ISC(uint8_t &data) {
+    instr_funcs["INC"](data);
+    instr_funcs["SBC"](data);
+}
+
+// UNOFFICIAL: Arithmetic shift data left by 1 bit and then OR with A
+void CPU6502::Op_SLO(uint8_t &data) {
+    instr_funcs["ASL"](data);
+    instr_funcs["ORA"](data);
+}
+
+// UNOFFICIAL: Rotate data left by 1 bit and then AND with A
+void CPU6502::Op_RLA(uint8_t &data) {
+    instr_funcs["ROL"](data);
+    instr_funcs["AND"](data);
+}
+
+// UNOFFICIAL: Shift data right by 1 bit and then EOR with A
+void CPU6502::Op_SRE(uint8_t &data) {
+    instr_funcs["LSR"](data);
+    instr_funcs["EOR"](data);
+}
+
+// UNOFFICIAL: Rotate data right by 1 bit and then set A to (A + data)
+void CPU6502::Op_RRA(uint8_t &data) {
+    instr_funcs["ROR"](data);
+    instr_funcs["ADC"](data);
 }
 
 void CPU6502::execute(InstrInfo info) {

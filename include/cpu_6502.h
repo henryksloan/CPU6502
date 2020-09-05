@@ -119,6 +119,11 @@ class CPU6502 {
     void Op_LAX(uint8_t&);
     void Op_SAX(uint8_t&);
     void Op_DCP(uint8_t&);
+    void Op_ISC(uint8_t&);
+    void Op_SLO(uint8_t&);
+    void Op_RLA(uint8_t&);
+    void Op_SRE(uint8_t&);
+    void Op_RRA(uint8_t&);
 
     void execute(InstrInfo info);
 

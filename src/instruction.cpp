@@ -60,7 +60,7 @@ Instructions::instr_map_t Instructions::generate_instr_map() {
                            {0xAC, "ABS", 4}, {0xBC, "ABX", 4}});
     add_instr(map, "LSR", {{0x4A, "ACC", 2}, {0x46, "ZER", 5}, {0x56, "ZEX", 6},
                            {0x4E, "ABS", 6}, {0x5E, "ABX", 7}});
-    // add_instr(map, "NOP", {{0xEA, "IMP", 2}});
+    add_instr(map, "NOP", {{0xEA, "IMP", 2}});
     add_instr(map, "ORA", {{0x09, "IMM", 2}, {0x05, "ZER", 3}, {0x15, "ZEX", 4}, {0x0D, "ABS", 4},
                            {0x1D, "ABX", 4}, {0x19, "ABY", 4}, {0x01, "INX", 6}, {0x11, "INY", 5}});
     add_instr(map, "PHA", {{0x48, "IMP", 2}});
